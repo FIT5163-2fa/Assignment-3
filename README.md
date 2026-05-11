@@ -9,4 +9,5 @@ Install uv package manager, [instructions here](https://docs.astral.sh/uv/gettin
 #### For Production
 `uv run init.py`
 #### For Development (Hot-reload)
-`uv run uvicorn init:app --reload`
+`uv run uvicorn init:app --reload`\
+Note: Swagger api page is available at the `\docs` endpoint
