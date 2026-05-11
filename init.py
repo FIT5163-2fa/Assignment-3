@@ -2,6 +2,7 @@ import uvicorn  # Set to lazy when in python 3.15
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.db import init_db
 from backend.two_factor_router import two_factor_router
 
 
@@ -16,6 +17,10 @@ def create_app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.on_event("startup")
+    def on_startup():
+        init_db()
 
     app.include_router(two_factor_router)
 
