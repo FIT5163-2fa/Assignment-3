@@ -19,8 +19,25 @@ two_factor_router = APIRouter(tags=["2FA"])
 TOTP_DURATION_SEC = 15
 
 
+class CreateKeyResponse(BaseModel):
+    key: bytes
+
+
+class ErrorResponse(BaseModel):
+    detail: str
+
+
+class GetTOTPResponse(BaseModel):
+    totp_code: int
+
+
 @two_factor_router.get(
     "/get_2fa_key",
+    description="Returns the TOTP password for a given user_id",
+    responses={
+        404: {"description": "User or 2fa secret not found"},
+    },
+    response_model=Union[GetTOTPResponse, ErrorResponse],
 )
 def get_totp_code(user_id: int, db: Session = Depends(get_db)):
     user = get_user(db, user_id)
@@ -46,14 +63,6 @@ def get_totp_code(user_id: int, db: Session = Depends(get_db)):
         return offset % 10**6
     else:
         raise HTTPException(status_code=404, detail="No two factor secret not found")
-
-
-class CreateKeyResponse(BaseModel):
-    key: bytes
-
-
-class ErrorResponse(BaseModel):
-    detail: str
 
 
 @two_factor_router.post(
