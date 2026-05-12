@@ -4,7 +4,7 @@ from typing import Union
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes, hmac
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -39,7 +39,7 @@ class GetTOTPResponse(BaseModel):
     },
     response_model=Union[GetTOTPResponse, ErrorResponse],
 )
-def get_totp_code(user_id: int, db: Session = Depends(get_db)):
+def get_totp_code(user_id: int, db: Session = Depends(get_db)) -> int:
     user = get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -60,7 +60,7 @@ def get_totp_code(user_id: int, db: Session = Depends(get_db)):
         offset = int.from_bytes(offset, "big") & 0x7FFFFFFF
 
         # TOTP Code mod to mask only needed number of digits
-        return offset % 10**6
+        return GetTOTPResponse(totp_code=offset % 10**6)
     else:
         raise HTTPException(status_code=404, detail="No two factor secret not found")
 
@@ -80,4 +80,13 @@ def create_key(user_id: int, db: Session = Depends(get_db)):
     else:
         key: bytes = Fernet.generate_key()
         update_two_factor_secret(db, user_id, key)
-    return key
+        return CreateKeyResponse(key=key)
+
+
+@two_factor_router.post(
+    "/DEBUG_CREATE_USER",
+)
+def DEBUG_CREATE_USER(username: str, db: Session = Depends(get_db)):
+    from backend.adapters.user_service import create_user
+
+    return create_user(db, username)
