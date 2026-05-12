@@ -25,7 +25,7 @@ def get_all_users(db: Session) -> list[User]:
     return db.query(User).all()
 
 
-def update_two_factor_secret(db: Session, user_id: int, secret: str) -> User | None:
+def update_two_factor_secret(db: Session, user_id: int, secret: bytes) -> User | None:
     user = get_user(db, user_id)
     if not user:
         return None
@@ -36,7 +36,13 @@ def update_two_factor_secret(db: Session, user_id: int, secret: str) -> User | N
 
 
 def remove_two_factor_secret(db: Session, user_id: int) -> User | None:
-    return update_two_factor_secret(db, user_id, None)
+    user = get_user(db, user_id)
+    if not user:
+        return None
+    user.two_factor_secret = None
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 def delete_user(db: Session, user_id: int) -> bool:

@@ -22,32 +22,30 @@ TOTP_DURATION_SEC = 15
 @two_factor_router.get(
     "/get_2fa_key",
 )
-def get_totp_code(secret_key: str = "PLACEHOLDER"):
-    # Placeholder key, fetch from user when that is ready
-    key: bytes = Fernet.generate_key()
-    print(key)
+def get_totp_code(user_id: int, db: Session = Depends(get_db)):
+    user = get_user(db, user_id)
+    if user and user.two_factor_secret:
+        # HMAC Hash
+        digest = hmac.HMAC(user.two_factor_secret, hashes.SHA256())
+        # Calculate Counter floor(unix_time/totp_duration)
+        counter = floor(int(time.time()) / TOTP_DURATION_SEC)
+        # Format hash output as a 8 byte big-endian number
+        digest.update(counter.to_bytes(8, "big"))
+        hash = digest.finalize()
 
-    # HMAC Hash
-    digest = hmac.HMAC(key, hashes.SHA256())
-    # Calculate Counter floor(unix_time/totp_duration)
-    counter = floor(int(time.time()) / TOTP_DURATION_SEC)
-    # Format hash output as a 8 byte big-endian number
-    digest.update(counter.to_bytes(8, "big"))
-    hash = digest.finalize()
+        # Get last 4 bits to get offset
+        lsb = hash[-1] & 0b1111
+        # Calculate Offset
+        offset = hash[lsb : lsb + 4]
+        # Mask off top bit
+        offset = int.from_bytes(offset, "big") & 0x7FFFFFFF
 
-    # Get last 4 bits to get offset
-    lsb = hash[-1] & 0b1111
-    # Calculate Offset
-    offset = hash[lsb : lsb + 4]
-    # Mask off top bit
-    offset = int.from_bytes(offset, "big") & 0x7FFFFFFF
-
-    # TOTP Code mod to mask only needed number of digits
-    return offset % 10**6
+        # TOTP Code mod to mask only needed number of digits
+        return offset % 10**6
 
 
 class CreateKeyResponse(BaseModel):
-    key: str
+    key: bytes
 
 
 class ErrorResponse(BaseModel):
@@ -68,5 +66,5 @@ def create_key(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     else:
         key: bytes = Fernet.generate_key()
-        update_two_factor_secret(db, user_id, key.decode())
-    return key.decode()
+        update_two_factor_secret(db, user_id, key)
+    return key

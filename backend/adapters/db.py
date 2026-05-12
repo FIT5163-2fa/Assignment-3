@@ -18,7 +18,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    two_factor_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    two_factor_secret: Mapped[bytes | None] = mapped_column(String(255), nullable=True)
 
 
 def get_db():
