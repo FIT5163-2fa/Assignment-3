@@ -24,7 +24,9 @@ TOTP_DURATION_SEC = 15
 )
 def get_totp_code(user_id: int, db: Session = Depends(get_db)):
     user = get_user(db, user_id)
-    if user and user.two_factor_secret:
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.two_factor_secret:
         # HMAC Hash
         digest = hmac.HMAC(user.two_factor_secret, hashes.SHA256())
         # Calculate Counter floor(unix_time/totp_duration)
@@ -42,6 +44,8 @@ def get_totp_code(user_id: int, db: Session = Depends(get_db)):
 
         # TOTP Code mod to mask only needed number of digits
         return offset % 10**6
+    else:
+        raise HTTPException(status_code=404, detail="No two factor secret not found")
 
 
 class CreateKeyResponse(BaseModel):
