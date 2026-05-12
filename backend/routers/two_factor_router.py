@@ -1,7 +1,9 @@
+import time
+from math import floor
 from typing import Union
 
 from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, hmac
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -14,12 +16,34 @@ from backend.adapters.user_service import (
 
 two_factor_router = APIRouter(tags=["2FA"])
 
+TOTP_DURATION_SEC = 15
 
-def get_totp_code(secret_key: str):
-    digest = hashes.Hash(hashes.SHA256())
-    digest.update(b"secret")
-    print(digest.finalize())
-    pass
+
+@two_factor_router.get(
+    "/get_2fa_key",
+)
+def get_totp_code(secret_key: str = "PLACEHOLDER"):
+    # Placeholder key, fetch from user when that is ready
+    key: bytes = Fernet.generate_key()
+    print(key)
+
+    # HMAC Hash
+    digest = hmac.HMAC(key, hashes.SHA256())
+    # Calculate Counter floor(unix_time/totp_duration)
+    counter = floor(int(time.time()) / TOTP_DURATION_SEC)
+    # Format hash output as a 8 byte big-endian number
+    digest.update(counter.to_bytes(8, "big"))
+    hash = digest.finalize()
+
+    # Get last 4 bits to get offset
+    lsb = hash[-1] & 0b1111
+    # Calculate Offset
+    offset = hash[lsb : lsb + 4]
+    # Mask off top bit
+    offset = int.from_bytes(offset, "big") & 0x7FFFFFFF
+
+    # TOTP Code mod to mask only needed number of digits
+    return offset % 10**6
 
 
 class CreateKeyResponse(BaseModel):
