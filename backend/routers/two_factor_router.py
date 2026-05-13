@@ -1,3 +1,4 @@
+import base64
 import time
 from math import floor
 from typing import Union
@@ -33,7 +34,8 @@ class GetTOTPResponse(BaseModel):
 
 def _generate_totp(user):
     # HMAC Hash
-    digest = hmac.HMAC(user.two_factor_secret, hashes.SHA256())
+    secret = base64.urlsafe_b64decode(user.two_factor_secret)
+    digest = hmac.HMAC(secret, hashes.SHA256())
     # Calculate Counter floor(unix_time/totp_duration)
     counter = floor(int(time.time()) / TOTP_DURATION_SEC)
     # Format hash output as a 8 byte big-endian number
