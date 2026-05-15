@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from typing import Union
 from fastapi import APIRouter, Depends, HTTPException
 from ..schemas.two_factor_schema import ErrorResponse, GetTOTPResponse
-from ..schemas.user_schema import RegisterUser
+from ..schemas.user_schema import CreateUser
 from backend.adapters.db import get_db
 from backend.adapters.user_service import (
     get_user,
@@ -33,12 +33,12 @@ def get_totp_code(user_id: int, db: Session = Depends(get_db)) -> GetTOTPRespons
 @debug_router.post(
     "/DEBUG_CREATE_USER",
 )
-def DEBUG_CREATE_USER(user: RegisterUser, db: Session = Depends(get_db)):
+def DEBUG_CREATE_USER(user: CreateUser, db: Session = Depends(get_db)):
     from backend.adapters.user_service import create_user
 
     return create_user(
         db,
-        RegisterUser.username,
-        RegisterUser.email,
-        RegisterUser.password.get_secret_value(),
+        user.username,
+        user.email,
+        user.password.get_secret_value(),
     )

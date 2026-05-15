@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from password_hasher import hash_password, verify_password
-from models import User
+from models import User, UserRole
 
 
 def create_user(
@@ -8,11 +8,13 @@ def create_user(
     username: str,
     email: str,
     plain_password: str,
+    role: UserRole = UserRole.USER,
     two_factor_secret: str | None = None,
 ) -> User:
     user = User(
         username=username,
         email=email,
+        role=role,
         hashed_password=hash_password(plain_password),
         two_factor_secret=two_factor_secret,
     )
