@@ -1,0 +1,13 @@
+from pydantic import BaseModel
+
+
+class CreateKeyResponse(BaseModel):
+    key: bytes
+
+
+class ErrorResponse(BaseModel):
+    detail: str
+
+
+class GetTOTPResponse(BaseModel):
+    totp_code: int
