@@ -5,7 +5,7 @@ from typing import Union
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes, hmac
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 

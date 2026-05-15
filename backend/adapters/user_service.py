@@ -4,7 +4,11 @@ from models import User
 
 
 def create_user(
-    db: Session, username: str, two_factor_secret: str | None = None
+    db: Session,
+    username: str,
+    email=str,
+    password=str,
+    two_factor_secret: str | None = None,
 ) -> User:
     user = User(username=username, two_factor_secret=two_factor_secret)
     db.add(user)
