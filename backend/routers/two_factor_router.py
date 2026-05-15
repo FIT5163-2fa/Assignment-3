@@ -1,3 +1,4 @@
+from sqlalchemy.testing.pickleable import User
 import base64
 import time
 from math import floor
@@ -9,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from backend.adapters.db import get_db
+from backend.adapters.db import get_db, User
 from backend.adapters.user_service import (
     get_user,
     update_two_factor_secret,
@@ -32,7 +33,7 @@ class GetTOTPResponse(BaseModel):
     totp_code: int
 
 
-def _generate_totp(user):
+def _generate_totp(user) -> int:
     # HMAC Hash
     secret = base64.urlsafe_b64decode(user.two_factor_secret)
     digest = hmac.HMAC(secret, hashes.SHA256())
@@ -60,7 +61,7 @@ def _generate_totp(user):
     },
     response_model=Union[GetTOTPResponse, ErrorResponse],
 )
-def get_totp_code(user_id: int, db: Session = Depends(get_db)) -> int:
+def get_totp_code(user_id: int, db: Session = Depends(get_db)) -> GetTOTPResponse:
     user = get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -94,7 +95,7 @@ def validate_2fa_key(
     },
     response_model=Union[CreateKeyResponse, ErrorResponse],
 )
-def create_key(user_id: int, db: Session = Depends(get_db)):
+def create_key(user_id: int, db: Session = Depends(get_db)) -> CreateKeyResponse:
     user = get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -107,7 +108,7 @@ def create_key(user_id: int, db: Session = Depends(get_db)):
 @two_factor_router.post(
     "/DEBUG_CREATE_USER",
 )
-def DEBUG_CREATE_USER(username: str, db: Session = Depends(get_db)):
+def DEBUG_CREATE_USER(username: str, db: Session = Depends(get_db)) -> User:
     from backend.adapters.user_service import create_user
 
     return create_user(db, username)
