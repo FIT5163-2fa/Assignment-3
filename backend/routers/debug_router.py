@@ -9,7 +9,7 @@ from backend.adapters.user_service import (
     create_user,
 )
 
-debug_router = APIRouter(tags=["2FA"])
+debug_router = APIRouter(tags=["Debug"])
 
 
 @debug_router.get(
