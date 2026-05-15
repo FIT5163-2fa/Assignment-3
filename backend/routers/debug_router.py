@@ -3,6 +3,7 @@ from typing import Union
 from fastapi import APIRouter, Depends, HTTPException
 from ..schemas.two_factor_schema import ErrorResponse, GetTOTPResponse
 from ..schemas.user_schema import CreateUser
+from ..routers.two_factor_router import _generate_totp
 from backend.adapters.db import get_db
 from backend.adapters.user_service import (
     get_user,
@@ -34,8 +35,6 @@ def get_totp_code(user_id: int, db: Session = Depends(get_db)) -> GetTOTPRespons
     "/DEBUG_CREATE_USER",
 )
 def DEBUG_CREATE_USER(user: CreateUser, db: Session = Depends(get_db)):
-    from backend.adapters.user_service import create_user
-
     return create_user(
         db,
         user.username,
