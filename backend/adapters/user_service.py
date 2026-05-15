@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from password_hasher import hash_password, verify_password
-from models import User, UserRole
+from backend.adapters.password_hasher import hash_password, verify_password
+from backend.adapters.models import User, UserRole
 
 
 def create_user(

@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
 from typing import Union
 from fastapi import APIRouter, Depends, HTTPException
-from ..schemas.two_factor_schema import ErrorResponse, GetTOTPResponse
-from ..schemas.user_schema import CreateUser
-from ..routers.two_factor_router import _generate_totp
+from backend.schemas.two_factor_schema import ErrorResponse, GetTOTPResponse
+from backend.schemas.user_schema import CreateUser
+from backend.routers.two_factor_router import _generate_totp
 from backend.adapters.db import get_db
 from backend.adapters.user_service import (
     get_user,
