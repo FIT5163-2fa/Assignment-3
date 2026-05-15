@@ -1,4 +1,3 @@
-from sqlalchemy.testing.pickleable import User
 import base64
 import time
 from math import floor
@@ -10,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from backend.adapters.db import get_db, User
+from backend.adapters.db import get_db
 from backend.adapters.user_service import (
     get_user,
     update_two_factor_secret,
@@ -108,7 +107,7 @@ def create_key(user_id: int, db: Session = Depends(get_db)) -> CreateKeyResponse
 @two_factor_router.post(
     "/DEBUG_CREATE_USER",
 )
-def DEBUG_CREATE_USER(username: str, db: Session = Depends(get_db)) -> User:
+def DEBUG_CREATE_USER(username: str, db: Session = Depends(get_db)):
     from backend.adapters.user_service import create_user
 
     return create_user(db, username)

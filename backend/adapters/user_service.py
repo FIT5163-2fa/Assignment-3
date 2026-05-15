@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from backend.adapters.db import User
+from models import User
 
 
 def create_user(
