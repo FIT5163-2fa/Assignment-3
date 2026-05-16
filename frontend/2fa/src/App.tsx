@@ -1,3 +1,8 @@
+import {
+  createTwoFactorKey,
+  getDebugAdminToken,
+} from "./lib/api"
+
 import { LoginPage } from "./components/LoginPage"
 import { AdminDashboard } from "./components/AdminDashboard"
 import {
