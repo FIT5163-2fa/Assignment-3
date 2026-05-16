@@ -48,14 +48,14 @@ def DEBUG_CREATE_USER(user: CreateUser, db: Session = Depends(get_db)):
 
 
 @debug_router.post(
-    "/DEBUG_admin_token",
+    "/DEBUG_ADMIN_TOKEN",
     description="DEBUG ONLY: Returns a bearer token for the configured admin user without 2FA",
     responses={
         404: {"description": "Admin user not found"},
     },
     response_model=Union[TokenResponse, ErrorResponse],
 )
-def DEBUG_admin_token(db: Session = Depends(get_db)) -> TokenResponse:
+def DEBUG_ADMIN_TOKEN(db: Session = Depends(get_db)) -> TokenResponse:
     user = get_user_by_email(db, settings.ADMIN_EMAIL)
     if user is None:
         raise HTTPException(status_code=404, detail="Admin user not found")
