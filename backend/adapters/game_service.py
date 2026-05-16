@@ -42,7 +42,6 @@ def update_game(
     moves: str | None = None,
     status: GameStatus | None = None,
     result: GameResult | None = None,
-    final_fen: str | None = None,
 ) -> Games | None:
     game = get_game(db, game_id)
     if not game:
@@ -58,8 +57,6 @@ def update_game(
         game.status = status
     if result is not None:
         game.result = result
-    if final_fen is not None:
-        game.final_fen = final_fen
 
     db.commit()
     db.refresh(game)
@@ -97,7 +94,6 @@ def finish_game(
     game_id: int,
     status: GameStatus,
     result: GameResult | None = None,
-    final_fen: str | None = None,
 ) -> Games | None:
     game = get_game(db, game_id)
     if not game:
@@ -105,7 +101,6 @@ def finish_game(
 
     game.status = status
     game.result = result
-    game.final_fen = final_fen
     db.commit()
     db.refresh(game)
     return game

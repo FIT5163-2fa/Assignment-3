@@ -5,31 +5,31 @@ from pydantic import BaseModel, Field
 
 from backend.adapters.models import GameResult, GameStatus, PlayerSide
 
+MoveString = Annotated[str, Field(min_length=3, max_length=5)]
+
 
 class CreateGame(BaseModel):
     user_id: int
     player_side: PlayerSide = PlayerSide.WHITE
     ai_depth: Annotated[int, Field(ge=1, le=10)] = 3
-    moves: str = ""
+    moves: list[MoveString] = Field(default_factory=list)
 
 
 class UpdateGame(BaseModel):
     player_side: PlayerSide | None = None
     ai_depth: Annotated[int | None, Field(ge=1, le=10)] = None
-    moves: str | None = None
+    moves: list[MoveString] | None = None
     status: GameStatus | None = None
     result: GameResult | None = None
-    final_fen: Annotated[str | None, Field(max_length=128)] = None
 
 
 class AppendMove(BaseModel):
-    move: str
+    move: MoveString
 
 
 class FinishGame(BaseModel):
     status: GameStatus
     result: GameResult | None = None
-    final_fen: Annotated[str | None, Field(max_length=128)] = None
 
 
 class GameResponse(BaseModel):
@@ -37,17 +37,16 @@ class GameResponse(BaseModel):
     user_id: int
     player_side: PlayerSide
     ai_depth: int
-    moves: str
+    moves: list[str]
     status: GameStatus
     result: GameResult | None
-    final_fen: str | None
     created_at: datetime
     updated_at: datetime
 
 
 class GameMovesResponse(BaseModel):
     game_id: int
-    moves: str
+    moves: list[str]
 
 
 class ErrorResponse(BaseModel):

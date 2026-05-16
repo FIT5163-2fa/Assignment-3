@@ -63,7 +63,6 @@ class Games(Base):
     result: Mapped[GameResult | None] = mapped_column(
         Enum(GameResult), nullable=True
     )
-    final_fen: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

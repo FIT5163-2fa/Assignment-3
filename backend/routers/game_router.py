@@ -29,16 +29,23 @@ from backend.schemas.game_schema import (
 game_router = APIRouter(tags=["Games"])
 
 
+def _join_moves(moves: list[str]) -> str:
+    return " ".join(moves)
+
+
+def _split_moves(moves: str) -> list[str]:
+    return moves.split() if moves else []
+
+
 def _game_response(game: Games) -> GameResponse:
     return GameResponse(
         id=game.id,
         user_id=game.user_id,
         player_side=game.player_side,
         ai_depth=game.ai_depth,
-        moves=game.moves,
+        moves=_split_moves(game.moves),
         status=game.status,
         result=game.result,
-        final_fen=game.final_fen,
         created_at=game.created_at,
         updated_at=game.updated_at,
     )
@@ -62,7 +69,7 @@ def create_chess_game(game: CreateGame, db: Session = Depends(get_db)) -> GameRe
         user_id=game.user_id,
         player_side=game.player_side,
         ai_depth=game.ai_depth,
-        moves=game.moves,
+        moves=_join_moves(game.moves),
     )
     return _game_response(created_game)
 
@@ -107,7 +114,7 @@ def get_chess_game_moves(
     if game is None:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    return GameMovesResponse(game_id=game.id, moves=game.moves)
+    return GameMovesResponse(game_id=game.id, moves=_split_moves(game.moves))
 
 
 @game_router.get(
@@ -162,10 +169,9 @@ def update_chess_game(
         game_id=game_id,
         player_side=game.player_side,
         ai_depth=game.ai_depth,
-        moves=game.moves,
+        moves=_join_moves(game.moves) if game.moves is not None else None,
         status=game.status,
         result=game.result,
-        final_fen=game.final_fen,
     )
     if updated_game is None:
         raise HTTPException(status_code=404, detail="Game not found")
@@ -207,7 +213,6 @@ def finish_chess_game(
         game_id=game_id,
         status=game.status,
         result=game.result,
-        final_fen=game.final_fen,
     )
     if updated_game is None:
         raise HTTPException(status_code=404, detail="Game not found")
