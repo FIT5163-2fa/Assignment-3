@@ -30,7 +30,7 @@ settings = get_settings()
 
 def _generate_totp(user) -> int:
     # HMAC Hash
-    secret = base64.urlsafe_b64decode(user.two_factor_secret)
+    secret = user.two_factor_secret
     digest = hmac.HMAC(secret, hashes.SHA256())
     # Calculate Counter floor(unix_time/totp_duration)
     counter = floor(int(time.time()) / settings.TOTP_DURATION_SEC)
@@ -52,7 +52,7 @@ def _create_totp_uri(user, secret: bytes) -> str:
     label = quote(f"{settings.TOTP_ISSUER}:{user.email}")
     params = urlencode(
         {
-            "secret": secret.decode(),
+            "secret": secret,
             "issuer": settings.TOTP_ISSUER,
             "algorithm": "SHA256",
             "digits": settings.TOTP_DIGITS,
