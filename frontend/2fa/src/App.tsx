@@ -1,3 +1,8 @@
+import {
+  createTwoFactorKey,
+  getDebugAdminToken,
+} from "./lib/api"
+
 import { LoginPage } from "./components/LoginPage"
 import { AdminDashboard } from "./components/AdminDashboard"
 import {
@@ -51,20 +56,21 @@ async function validateTotpCode(userId: number, totpCode: string) {
 }
 
 async function createDebugUser(username: string) {
-  const res = await fetch(
-    `${API_BASE}/DEBUG_CREATE_USER?username=${encodeURIComponent(username)}`,
-    { method: "POST" }
-  )
-  if (!res.ok) throw new Error(await res.text())
-  return res.json() as Promise<{ id: number; username: string }>
+  const token = await getDebugAdminToken()
+  localStorage.setItem("adminToken", token)
+
+  return {
+    id: 1,
+    username,
+  }
 }
 
 async function createSecretKey(userId: number) {
-  const res = await fetch(`${API_BASE}/create_key?user_id=${userId}`, {
-    method: "POST",
-  })
-  if (!res.ok) throw new Error(await res.text())
-  return res.json() as Promise<{ key: string }>
+  const uri = await createTwoFactorKey(userId)
+
+  return {
+    key: uri,
+  }
 }
 
 function base64urlDecode(input: string): ArrayBuffer {
