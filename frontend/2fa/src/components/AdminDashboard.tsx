@@ -5,6 +5,7 @@ type UserRole = "admin" | "user"
 type DemoUser = {
   id: number
   username: string
+  email: string
   password: string
   role: UserRole
   keygenEnabled: boolean
@@ -13,9 +14,11 @@ type DemoUser = {
 type AdminDashboardProps = {
   users: DemoUser[]
   newUsername: string
+  newEmail: string
   newPassword: string
   newRole: UserRole
   setNewUsername: Dispatch<SetStateAction<string>>
+  setNewEmail: Dispatch<SetStateAction<string>>
   setNewPassword: Dispatch<SetStateAction<string>>
   setNewRole: Dispatch<SetStateAction<UserRole>>
   handleAddUser: (event: SyntheticEvent<HTMLFormElement>) => void
@@ -30,9 +33,11 @@ type AdminDashboardProps = {
 export function AdminDashboard({
   users,
   newUsername,
+  newEmail,
   newPassword,
   newRole,
   setNewUsername,
+  setNewEmail,
   setNewPassword,
   setNewRole,
   handleAddUser,
@@ -60,7 +65,7 @@ export function AdminDashboard({
         </div>
 
         <form
-          className="mt-8 grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 md:grid-cols-4"
+          className="mt-8 grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 md:grid-cols-5"
           onSubmit={handleAddUser}
         >
           <input
@@ -68,6 +73,14 @@ export function AdminDashboard({
             placeholder="New username"
             value={newUsername}
             onChange={(event) => setNewUsername(event.target.value)}
+          />
+
+          <input
+            className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+            placeholder="Email"
+            type="email"
+            value={newEmail}
+            onChange={(event) => setNewEmail(event.target.value)}
           />
 
           <input

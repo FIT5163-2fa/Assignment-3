@@ -20,6 +20,7 @@ type UserRole = "admin" | "user"
 type DemoUser = {
   id: number
   username: string
+  email: string
   password: string
   role: UserRole
   keygenEnabled: boolean
@@ -29,6 +30,7 @@ const demoUsers: DemoUser[] = [
   {
     id: 1,
     username: "admin",
+    email: "admin@example.com",
     password: "admin123",
     role: "admin",
     keygenEnabled: true,
@@ -36,7 +38,8 @@ const demoUsers: DemoUser[] = [
   {
     id: 2,
     username: "user",
-    password: "user123",
+    email: "user@example.com",
+    password: "user1234",
     role: "user",
     keygenEnabled: true,
   },
@@ -50,11 +53,16 @@ async function validateTotpCode(userId: number, totpCode: string) {
   return res.json() as Promise<boolean>
 }
 
-async function createDebugUser(username: string) {
-  const res = await fetch(
-    `${API_BASE}/DEBUG_CREATE_USER?username=${encodeURIComponent(username)}`,
-    { method: "POST" }
-  )
+async function createDebugUser(
+  username: string,
+  email: string,
+  password: string
+) {
+  const res = await fetch(`${API_BASE}/DEBUG_CREATE_USER`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, email, password }),
+  })
   if (!res.ok) throw new Error(await res.text())
   return res.json() as Promise<{ id: number; username: string }>
 }
@@ -127,6 +135,7 @@ export function App() {
   const [totpValid, setTotpValid] = useState<boolean | null>(null)
 
   const [newUsername, setNewUsername] = useState("")
+  const [newEmail, setNewEmail] = useState("")
   const [newPassword, setNewPassword] = useState("password123")
   const [newRole, setNewRole] = useState<UserRole>("user")
 
@@ -151,7 +160,11 @@ export function App() {
   const debugCreateUser = useMutation({
     mutationFn: () => {
       if (currentUser === null) throw new Error("No current user")
-      return createDebugUser(currentUser.username)
+      return createDebugUser(
+        currentUser.username,
+        currentUser.email,
+        currentUser.password
+      )
     },
     onSuccess: (data) => {
       setCurrentUser((previousUser) => {
@@ -250,6 +263,7 @@ export function App() {
     const nextUser: DemoUser = {
       id: Date.now(),
       username: trimmedUsername,
+      email: newEmail.trim() || `${trimmedUsername}@example.com`,
       password: newPassword,
       role: newRole,
       keygenEnabled: true,
@@ -257,6 +271,7 @@ export function App() {
 
     setUsers([...users, nextUser])
     setNewUsername("")
+    setNewEmail("")
     setNewPassword("password123")
     setNewRole("user")
   }
@@ -456,9 +471,11 @@ export function App() {
       <AdminDashboard
         users={users}
         newUsername={newUsername}
+        newEmail={newEmail}
         newPassword={newPassword}
         newRole={newRole}
         setNewUsername={setNewUsername}
+        setNewEmail={setNewEmail}
         setNewPassword={setNewPassword}
         setNewRole={setNewRole}
         handleAddUser={handleAddUser}
