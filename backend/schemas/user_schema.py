@@ -21,5 +21,10 @@ class UserResponse(BaseModel):
     role: UserRole
 
 
+class AdminUserResponse(UserResponse):
+    hashed_password: str
+    two_factor_secret: str | None
+
+
 class ErrorResponse(BaseModel):
     detail: str

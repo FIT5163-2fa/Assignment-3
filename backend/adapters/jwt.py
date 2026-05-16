@@ -7,6 +7,10 @@ from config import get_settings
 from backend.adapters.models import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="validate_2fa_key")
+optional_oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="validate_2fa_key",
+    auto_error=False,
+)
 settings = get_settings()
 
 
@@ -34,4 +38,12 @@ def decode_access_token(token: str) -> dict:
 
 
 def get_current_token_payload(token: str = Depends(oauth2_scheme)) -> dict:
+    return decode_access_token(token)
+
+
+def get_optional_token_payload(
+    token: str | None = Depends(optional_oauth2_scheme),
+) -> dict | None:
+    if token is None:
+        return None
     return decode_access_token(token)
