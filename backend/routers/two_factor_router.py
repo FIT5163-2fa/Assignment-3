@@ -2,6 +2,7 @@ import base64
 import time
 from math import floor
 from typing import Union
+from urllib.parse import quote, urlencode
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes, hmac
@@ -18,6 +19,8 @@ from backend.schemas.two_factor_schema import CreateKeyResponse, ErrorResponse
 two_factor_router = APIRouter(tags=["2FA"])
 
 TOTP_DURATION_SEC = 15
+TOTP_DIGITS = 6
+TOTP_ISSUER = "Secure Chess"
 
 
 def _generate_totp(user) -> int:
@@ -37,7 +40,21 @@ def _generate_totp(user) -> int:
     # Mask off top bit
     offset = int.from_bytes(offset, "big") & 0x7FFFFFFF
 
-    return offset % 10**6
+    return offset % 10**TOTP_DIGITS
+
+
+def _create_totp_uri(user, secret: bytes) -> str:
+    label = quote(f"{TOTP_ISSUER}:{user.email}")
+    params = urlencode(
+        {
+            "secret": secret.decode(),
+            "issuer": TOTP_ISSUER,
+            "algorithm": "SHA256",
+            "digits": TOTP_DIGITS,
+            "period": TOTP_DURATION_SEC,
+        }
+    )
+    return f"otpauth://totp/{label}?{params}"
 
 
 @two_factor_router.get(
@@ -58,9 +75,10 @@ def validate_2fa_key(
 
 @two_factor_router.post(
     "/create_key",
-    description="Creates and returns a 2factor secret, Will create a new 2factor secret if the user already has a secret",
+    description="Creates and returns a 2factor otpauth URI",
     responses={
         404: {"description": "User not found"},
+        409: {"description": "User already has a two factor secret"},
     },
     response_model=Union[CreateKeyResponse, ErrorResponse],
 )
@@ -68,7 +86,12 @@ def create_key(user_id: int, db: Session = Depends(get_db)) -> CreateKeyResponse
     user = get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    else:
-        key: bytes = Fernet.generate_key()
-        update_two_factor_secret(db, user_id, key)
-        return CreateKeyResponse(key=key)
+    if user.two_factor_secret:
+        raise HTTPException(
+            status_code=409,
+            detail="User already has a two factor secret",
+        )
+
+    key: bytes = Fernet.generate_key()
+    update_two_factor_secret(db, user_id, key)
+    return CreateKeyResponse(uri=_create_totp_uri(user, key))

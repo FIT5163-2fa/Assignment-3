@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class CreateKeyResponse(BaseModel):
-    key: bytes
+    uri: str
 
 
 class ErrorResponse(BaseModel):
