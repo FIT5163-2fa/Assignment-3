@@ -9,6 +9,22 @@ type CreateKeyResponse = {
   uri: string
 }
 
+type DebugTotpResponse = {
+  totp_code: number
+}
+
+export async function getDebugTotpCode(userId: number) {
+  const response = await fetch(`${API_BASE_URL}/DEBUG_get_2fa_key?user_id=${userId}`)
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response))
+  }
+
+  const data: DebugTotpResponse = await response.json()
+  return data.totp_code.toString().padStart(6, "0")
+}
+
+
 async function getErrorMessage(response: Response) {
   const errorText = await response.text()
 

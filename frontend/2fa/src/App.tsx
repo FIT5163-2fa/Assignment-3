@@ -1,6 +1,7 @@
 import {
   createTwoFactorKey,
   getDebugAdminToken,
+  getDebugTotpCode,
 } from "./lib/api"
 
 import { LoginPage } from "./components/LoginPage"
@@ -16,7 +17,7 @@ import type { SyntheticEvent } from "react"
 import { useMutation } from "@tanstack/react-query"
 
 const API_BASE = "http://localhost:8000"
-const TOTP_DURATION_SEC = 15
+
 
 type Page = "login" | "twoFactor" | "admin" | "chess"
 
@@ -73,50 +74,8 @@ async function createSecretKey(userId: number) {
   }
 }
 
-function base64urlDecode(input: string): ArrayBuffer {
-  const base64 = input
-    .replace(/-/g, "+")
-    .replace(/_/g, "/")
-    .padEnd(input.length + ((4 - (input.length % 4)) % 4), "=")
 
-  const binary = atob(base64)
-  const buffer = new ArrayBuffer(binary.length)
-  const view = new Uint8Array(buffer)
 
-  for (let index = 0; index < binary.length; index++) {
-    view[index] = binary.charCodeAt(index)
-  }
-
-  return buffer
-}
-
-async function generateTotp(secret: ArrayBuffer): Promise<string> {
-  const counter = Math.floor(Date.now() / 1000 / TOTP_DURATION_SEC)
-
-  const counterBuffer = new ArrayBuffer(8)
-  new DataView(counterBuffer).setBigInt64(0, BigInt(counter), false)
-
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    secret,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  )
-
-  const hash = new Uint8Array(
-    await crypto.subtle.sign("HMAC", cryptoKey, counterBuffer)
-  )
-
-  const offset = hash[hash.length - 1] & 0b1111
-  const binary =
-    ((hash[offset] & 0x7f) << 24) |
-    (hash[offset + 1] << 16) |
-    (hash[offset + 2] << 8) |
-    hash[offset + 3]
-
-  return (binary % 1_000_000).toString().padStart(6, "0")
-}
 
 export function App() {
   const [page, setPage] = useState<Page>("login")
@@ -180,14 +139,14 @@ export function App() {
 
   const generateCode = useMutation({
     mutationFn: async () => {
-      if (!secret) throw new Error("No secret key")
-      return generateTotp(base64urlDecode(secret))
-    },
-    onSuccess: (code) => {
-      setTotp(code)
-      setTotpValid(null)
-    },
-  })
+      if (currentUser === null) throw new Error("No current user")
+        return getDebugTotpCode(currentUser.id)
+      },
+      onSuccess: (code) => {
+        setTotp(code)
+        setTotpValid(null)
+      },
+    })
 
 // Handles the first login step before 2FA.
 // The user can continue only if the password is correct
@@ -406,7 +365,7 @@ if (page === "login") {
               <button
                 className="rounded-lg bg-green-600 px-4 py-2 text-white disabled:opacity-50"
                 onClick={() => generateCode.mutate()}
-                disabled={!secret || generateCode.isPending}
+                disabled={!currentUser || generateCode.isPending}
               >
                 Generate Temporary Code
               </button>
