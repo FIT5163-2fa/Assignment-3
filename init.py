@@ -1,5 +1,3 @@
-from functools import lru_cache
-import config
 import uvicorn  # Set to lazy when in python 3.15
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,10 +35,6 @@ def create_app():
     app.include_router(user_router)
     app.include_router(game_router)
     return app
-
-@lru_cache
-def get_settings() -> config.Settings:
-    return config.Settings()  # ty:ignore[missing-argument]
 
 
 app = create_app()

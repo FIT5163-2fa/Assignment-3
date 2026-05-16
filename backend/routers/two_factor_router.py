@@ -20,10 +20,11 @@ from backend.schemas.two_factor_schema import (
     ErrorResponse,
     TokenResponse,
 )
-from init import get_settings
+from config import get_settings
 
 two_factor_router = APIRouter(tags=["2FA"])
 settings = get_settings()
+
 
 def _generate_totp(user) -> int:
     # HMAC Hash
