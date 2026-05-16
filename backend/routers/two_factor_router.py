@@ -1,6 +1,8 @@
 import base64
 import time
+from hashlib import scrypt
 from math import floor
+from os import urandom
 from typing import Union
 from urllib.parse import quote, urlencode
 
@@ -28,7 +30,7 @@ settings = get_settings()
 
 def _generate_totp(user) -> int:
     # HMAC Hash
-    secret = base64.urlsafe_b64decode(user.two_factor_secret)
+    secret = user.two_factor_secret
     digest = hmac.HMAC(secret, hashes.SHA256())
     # Calculate Counter floor(unix_time/totp_duration)
     counter = floor(int(time.time()) / settings.TOTP_DURATION_SEC)
@@ -50,7 +52,7 @@ def _create_totp_uri(user, secret: bytes) -> str:
     label = quote(f"{settings.TOTP_ISSUER}:{user.email}")
     params = urlencode(
         {
-            "secret": secret.decode(),
+            "secret": secret,
             "issuer": settings.TOTP_ISSUER,
             "algorithm": "SHA256",
             "digits": settings.TOTP_DIGITS,
@@ -101,7 +103,8 @@ def create_key(user_id: int, db: Session = Depends(get_db)) -> CreateKeyResponse
             status_code=409,
             detail="User already has a two factor secret",
         )
-
-    key: bytes = Fernet.generate_key()
+    salt: bytes = urandom(32)
+    key: bytes = scrypt(user.email.encode("utf-8"), salt=salt, n=16384, r=8, p=1)
+    # key: bytes = Fernet.generate_key() # Crypto Secure
     update_two_factor_secret(db, user_id, key)
     return CreateKeyResponse(uri=_create_totp_uri(user, key))
