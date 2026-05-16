@@ -4,10 +4,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.adapters.db import init_db
 from backend.routers.two_factor_router import two_factor_router
+from backend.routers.debug_router import debug_router
+from backend.routers.game_router import game_router
+from backend.routers.user_router import user_router
 
 
 def create_app():
-    tags_metadata = [{"name": "2FA", "description": "API for 2fa functionality"}]
+    tags_metadata = [
+        {"name": "2FA", "description": "API for 2fa functionality"},
+        {"name": "Debug", "description": "Debug endpoints for development"},
+        {"name": "Games", "description": "API for chess game persistence"},
+        {"name": "Users", "description": "API for user management"},
+    ]
     app = FastAPI(openapi_tags=tags_metadata)
 
     app.add_middleware(
@@ -23,7 +31,9 @@ def create_app():
         init_db()
 
     app.include_router(two_factor_router)
-
+    app.include_router(debug_router)
+    app.include_router(user_router)
+    app.include_router(game_router)
     return app
 
 

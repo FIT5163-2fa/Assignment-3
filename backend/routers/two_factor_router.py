@@ -2,42 +2,36 @@ import base64
 import time
 from math import floor
 from typing import Union
+from urllib.parse import quote, urlencode
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes, hmac
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.adapters.db import get_db
+from backend.adapters.jwt import create_access_token
 from backend.adapters.user_service import (
     get_user,
     update_two_factor_secret,
 )
+from backend.schemas.two_factor_schema import (
+    CreateKeyResponse,
+    ErrorResponse,
+    TokenResponse,
+)
+from config import get_settings
 
 two_factor_router = APIRouter(tags=["2FA"])
-
-TOTP_DURATION_SEC = 15
-
-
-class CreateKeyResponse(BaseModel):
-    key: bytes
+settings = get_settings()
 
 
-class ErrorResponse(BaseModel):
-    detail: str
-
-
-class GetTOTPResponse(BaseModel):
-    totp_code: int
-
-
-def _generate_totp(user):
+def _generate_totp(user) -> int:
     # HMAC Hash
     secret = base64.urlsafe_b64decode(user.two_factor_secret)
     digest = hmac.HMAC(secret, hashes.SHA256())
     # Calculate Counter floor(unix_time/totp_duration)
-    counter = floor(int(time.time()) / TOTP_DURATION_SEC)
+    counter = floor(int(time.time()) / settings.TOTP_DURATION_SEC)
     # Format hash output as a 8 byte big-endian number
     digest.update(counter.to_bytes(8, "big"))
     hash = digest.finalize()
@@ -49,65 +43,65 @@ def _generate_totp(user):
     # Mask off top bit
     offset = int.from_bytes(offset, "big") & 0x7FFFFFFF
 
-    return offset % 10**6
+    return offset % 10**settings.TOTP_DIGITS
 
 
-@two_factor_router.get(
-    "/DEBUG_get_2fa_key",
-    description="Returns the TOTP password for a given user_id",
-    responses={
-        404: {"description": "User or 2fa secret not found"},
-    },
-    response_model=Union[GetTOTPResponse, ErrorResponse],
-)
-def get_totp_code(user_id: int, db: Session = Depends(get_db)) -> int:
-    user = get_user(db, user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    if user.two_factor_secret:
-        return GetTOTPResponse(totp_code=_generate_totp(user))
-    else:
-        raise HTTPException(status_code=404, detail="No two factor secret not found")
+def _create_totp_uri(user, secret: bytes) -> str:
+    label = quote(f"{settings.TOTP_ISSUER}:{user.email}")
+    params = urlencode(
+        {
+            "secret": secret.decode(),
+            "issuer": settings.TOTP_ISSUER,
+            "algorithm": "SHA256",
+            "digits": settings.TOTP_DIGITS,
+            "period": settings.TOTP_DURATION_SEC,
+        }
+    )
+    return f"otpauth://totp/{label}?{params}"
 
 
 @two_factor_router.get(
     "/validate_2fa_key",
     description="Checks if supplied 2fa code is correct",
+    responses={
+        401: {"description": "Invalid two factor code"},
+        404: {"description": "User or 2fa secret not found"},
+    },
+    response_model=Union[TokenResponse, ErrorResponse],
 )
 def validate_2fa_key(
     user_id: int, user_totp: int, db: Session = Depends(get_db)
-) -> bool:
+) -> TokenResponse:
     user = get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     if user.two_factor_secret:
-        return user_totp == _generate_totp(user)
+        if user_totp == _generate_totp(user):
+            return TokenResponse(access_token=create_access_token(user))
+        raise HTTPException(status_code=401, detail="Invalid two factor code")
     else:
         raise HTTPException(status_code=404, detail="No two factor secret not found")
 
 
 @two_factor_router.post(
     "/create_key",
-    description="Creates and returns a 2factor secret, Will create a new 2factor secret if the user already has a secret",
+    description="Creates and returns a 2factor otpauth URI",
     responses={
         404: {"description": "User not found"},
+        409: {"description": "User already has a two factor secret"},
     },
     response_model=Union[CreateKeyResponse, ErrorResponse],
 )
-def create_key(user_id: int, db: Session = Depends(get_db)):
+def create_key(user_id: int, db: Session = Depends(get_db)) -> CreateKeyResponse:
     user = get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    else:
-        key: bytes = Fernet.generate_key()
-        update_two_factor_secret(db, user_id, key)
-        return CreateKeyResponse(key=key)
+    if user.two_factor_secret:
+        raise HTTPException(
+            status_code=409,
+            detail="User already has a two factor secret",
+        )
 
-
-@two_factor_router.post(
-    "/DEBUG_CREATE_USER",
-)
-def DEBUG_CREATE_USER(username: str, db: Session = Depends(get_db)):
-    from backend.adapters.user_service import create_user
-
-    return create_user(db, username)
+    key: bytes = Fernet.generate_key()
+    update_two_factor_secret(db, user_id, key)
+    return CreateKeyResponse(uri=_create_totp_uri(user, key))

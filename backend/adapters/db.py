@@ -1,5 +1,5 @@
-from sqlalchemy import String, create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -13,14 +13,6 @@ class Base(DeclarativeBase):
     pass
 
 
-class User(Base):
-    __tablename__ = "users"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    two_factor_secret: Mapped[bytes | None] = mapped_column(String(255), nullable=True)
-
-
 def get_db():
     db = SessionLocal()
     try:
@@ -30,4 +22,32 @@ def get_db():
 
 
 def init_db():
+    from backend.adapters.models import UserRole
+    from backend.adapters.user_service import (
+        create_user,
+        get_user_by_email,
+        update_user_role,
+    )
+    from config import get_settings
+
     Base.metadata.create_all(bind=engine)
+
+    settings = get_settings()
+    db = SessionLocal()
+    try:
+        admin_user = get_user_by_email(db, settings.ADMIN_EMAIL)
+        if admin_user:
+            if admin_user.role != UserRole.ADMIN:
+                update_user_role(db, admin_user.id, UserRole.ADMIN)
+            return
+
+        admin_username = settings.ADMIN_EMAIL.split("@", maxsplit=1)[0]
+        create_user(
+            db,
+            username=admin_username,
+            email=settings.ADMIN_EMAIL,
+            plain_password=settings.ADMIN_PASSWORD,
+            role=UserRole.ADMIN,
+        )
+    finally:
+        db.close()
