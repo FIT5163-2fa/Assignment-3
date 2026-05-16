@@ -60,9 +60,7 @@ class Games(Base):
     status: Mapped[GameStatus] = mapped_column(
         Enum(GameStatus), default=GameStatus.IN_PROGRESS, nullable=False
     )
-    result: Mapped[GameResult | None] = mapped_column(
-        Enum(GameResult), nullable=True
-    )
+    result: Mapped[GameResult | None] = mapped_column(Enum(GameResult), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

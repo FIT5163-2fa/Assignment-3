@@ -11,11 +11,10 @@ from backend.adapters.game_service import (
     finish_game,
     get_all_games,
     get_game,
-    get_games_by_user,
     update_game,
 )
 from backend.adapters.models import Games
-from backend.adapters.user_service import get_user, get_user_by_username
+from backend.adapters.user_service import get_user
 from backend.schemas.game_schema import (
     AppendMove,
     CreateGame,
@@ -26,7 +25,7 @@ from backend.schemas.game_schema import (
     UpdateGame,
 )
 
-game_router = APIRouter(tags=["Games"])
+game_router = APIRouter(prefix="/games", tags=["Games"])
 
 
 def _join_moves(moves: list[str]) -> str:
@@ -52,7 +51,7 @@ def _game_response(game: Games) -> GameResponse:
 
 
 @game_router.post(
-    "/games",
+    "",
     description="Creates a chess game for a user",
     responses={
         404: {"description": "User not found"},
@@ -75,7 +74,7 @@ def create_chess_game(game: CreateGame, db: Session = Depends(get_db)) -> GameRe
 
 
 @game_router.get(
-    "/games",
+    "",
     description="Returns all chess games",
     response_model=list[GameResponse],
 )
@@ -84,7 +83,7 @@ def get_chess_games(db: Session = Depends(get_db)) -> list[GameResponse]:
 
 
 @game_router.get(
-    "/games/{game_id}",
+    "/{game_id}",
     description="Returns a chess game by game id",
     responses={
         404: {"description": "Game not found"},
@@ -100,7 +99,7 @@ def get_chess_game(game_id: int, db: Session = Depends(get_db)) -> GameResponse:
 
 
 @game_router.get(
-    "/games/{game_id}/moves",
+    "/{game_id}/moves",
     description="Returns moves for a chess game",
     responses={
         404: {"description": "Game not found"},
@@ -117,44 +116,8 @@ def get_chess_game_moves(
     return GameMovesResponse(game_id=game.id, moves=_split_moves(game.moves))
 
 
-@game_router.get(
-    "/users/{user_id}/games",
-    description="Returns chess games for a user id",
-    responses={
-        404: {"description": "User not found"},
-    },
-    response_model=Union[list[GameResponse], ErrorResponse],
-)
-def get_chess_games_by_user_id(
-    user_id: int, db: Session = Depends(get_db)
-) -> list[GameResponse]:
-    user = get_user(db, user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return [_game_response(game) for game in get_games_by_user(db, user_id)]
-
-
-@game_router.get(
-    "/users/by_username/{username}/games",
-    description="Returns chess games for a username",
-    responses={
-        404: {"description": "User not found"},
-    },
-    response_model=Union[list[GameResponse], ErrorResponse],
-)
-def get_chess_games_by_username(
-    username: str, db: Session = Depends(get_db)
-) -> list[GameResponse]:
-    user = get_user_by_username(db, username)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return [_game_response(game) for game in get_games_by_user(db, user.id)]
-
-
 @game_router.put(
-    "/games/{game_id}",
+    "/{game_id}",
     description="Updates a chess game",
     responses={
         404: {"description": "Game not found"},
@@ -180,7 +143,7 @@ def update_chess_game(
 
 
 @game_router.post(
-    "/games/{game_id}/moves",
+    "/{game_id}/moves",
     description="Appends one move to a chess game",
     responses={
         404: {"description": "Game not found"},
@@ -198,7 +161,7 @@ def append_chess_game_move(
 
 
 @game_router.post(
-    "/games/{game_id}/finish",
+    "/{game_id}/finish",
     description="Marks a chess game as finished",
     responses={
         404: {"description": "Game not found"},
@@ -221,7 +184,7 @@ def finish_chess_game(
 
 
 @game_router.delete(
-    "/games/{game_id}",
+    "/{game_id}",
     description="Deletes a chess game",
     responses={
         404: {"description": "Game not found"},

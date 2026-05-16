@@ -40,6 +40,16 @@ def get_all_users(db: Session) -> list[User]:
     return db.query(User).all()
 
 
+def update_user_role(db: Session, user_id: int, role: UserRole) -> User | None:
+    user = get_user(db, user_id)
+    if not user:
+        return None
+    user.role = role
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def update_two_factor_secret(db: Session, user_id: int, secret: bytes) -> User | None:
     user = get_user(db, user_id)
     if not user:
