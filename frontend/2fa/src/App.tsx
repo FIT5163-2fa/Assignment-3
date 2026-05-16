@@ -26,6 +26,7 @@ type UserRole = "admin" | "user"
 type DemoUser = {
   id: number
   username: string
+  email: string
   password: string
   role: UserRole
   keygenEnabled: boolean
@@ -35,6 +36,7 @@ const demoUsers: DemoUser[] = [
   {
     id: 1,
     username: "admin",
+    email: "admin@example.com",
     password: "admin123",
     role: "admin",
     keygenEnabled: true,
@@ -42,7 +44,8 @@ const demoUsers: DemoUser[] = [
   {
     id: 2,
     username: "user",
-    password: "user123",
+    email: "user@example.com",
+    password: "user1234",
     role: "user",
     keygenEnabled: true,
   },
@@ -56,22 +59,26 @@ async function validateTotpCode(userId: number, totpCode: string) {
   return res.json() as Promise<boolean>
 }
 
-async function createDebugUser(username: string) {
-  const token = await getDebugAdminToken()
-  localStorage.setItem("adminToken", token)
-
-  return {
-    id: 1,
-    username,
-  }
+async function createDebugUser(
+  username: string,
+  email: string,
+  password: string
+) {
+  const res = await fetch(`${API_BASE}/DEBUG_CREATE_USER`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, email, password }),
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json() as Promise<{ id: number; username: string }>
 }
 
 async function createSecretKey(userId: number) {
-  const uri = await createTwoFactorKey(userId)
-
-  return {
-    key: uri,
-  }
+  const res = await fetch(`${API_BASE}/create_key?user_id=${userId}`, {
+    method: "POST",
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json() as Promise<{ uri: string }>
 }
 
 
@@ -92,6 +99,7 @@ export function App() {
   const [totpValid, setTotpValid] = useState<boolean | null>(null)
 
   const [newUsername, setNewUsername] = useState("")
+  const [newEmail, setNewEmail] = useState("")
   const [newPassword, setNewPassword] = useState("password123")
   const [newRole, setNewRole] = useState<UserRole>("user")
 
@@ -116,7 +124,11 @@ export function App() {
   const debugCreateUser = useMutation({
     mutationFn: () => {
       if (currentUser === null) throw new Error("No current user")
-      return createDebugUser(currentUser.username)
+      return createDebugUser(
+        currentUser.username,
+        currentUser.email,
+        currentUser.password
+      )
     },
     onSuccess: (data) => {
       setCurrentUser((previousUser) => {
@@ -134,7 +146,12 @@ export function App() {
       if (currentUser === null) throw new Error("No current user")
       return createSecretKey(currentUser.id)
     },
-    onSuccess: (data) => setSecret(data.key),
+    onSuccess: (data) => {
+      const uri = data.uri.replace("otpauth://", "https://")
+      const parsedUrl = new URL(uri)
+      const secretParam = parsedUrl.searchParams.get("secret")
+      if (secretParam) setSecret(secretParam)
+    },
   })
 
   const generateCode = useMutation({
@@ -148,9 +165,9 @@ export function App() {
       },
     })
 
-// Handles the first login step before 2FA.
-// The user can continue only if the password is correct
-// and the keygen account is enabled.
+  // Handles the first login step before 2FA.
+  // The user can continue only if the password is correct
+  // and the keygen account is enabled.
   function handleLogin(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoginError("")
@@ -186,9 +203,8 @@ export function App() {
     setPage("login")
   }
 
-
-// Adds a new user in the admin dashboard.
-// The user is stored in frontend state for the current demo.
+  // Adds a new user in the admin dashboard.
+  // The user is stored in frontend state for the current demo.
   function handleAddUser(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -211,6 +227,7 @@ export function App() {
     const nextUser: DemoUser = {
       id: Date.now(),
       username: trimmedUsername,
+      email: newEmail.trim() || `${trimmedUsername}@example.com`,
       password: newPassword,
       role: newRole,
       keygenEnabled: true,
@@ -218,13 +235,13 @@ export function App() {
 
     setUsers([...users, nextUser])
     setNewUsername("")
+    setNewEmail("")
     setNewPassword("password123")
     setNewRole("user")
   }
 
-
-// Enables or disables a user's keygen account.
-// Disabled users are blocked from entering the 2FA step.
+  // Enables or disables a user's keygen account.
+  // Disabled users are blocked from entering the 2FA step.
   function handleToggleKeygen(userId: number) {
     const updatedUsers = users.map((userItem) => {
       if (userItem.id === userId) {
@@ -240,12 +257,11 @@ export function App() {
     setUsers(updatedUsers)
   }
 
-
-// Deletes a user from the admin table.
-// The current admin account is protected from being deleted.
+  // Deletes a user from the admin table.
+  // The current admin account is protected from being deleted.
   function handleDeleteUser(userId: number) {
     const selectedUser = users.find((userItem) => userItem.id === userId)
-    
+
     if (selectedUser?.username === currentUser?.username) {
       alert("The current admin account cannot be deleted.")
       return
@@ -255,21 +271,20 @@ export function App() {
     setUsers(updatedUsers)
   }
 
-
-// Render the login page first. If the login is successful, App.tsx changes
-// the page state to the 2FA screen.
-if (page === "login") {
-  return (
-    <LoginPage
-      loginUsername={loginUsername}
-      loginPassword={loginPassword}
-      loginError={loginError}
-      setLoginUsername={setLoginUsername}
-      setLoginPassword={setLoginPassword}
-      handleLogin={handleLogin}
-    />
-  )
-}
+  // Render the login page first. If the login is successful, App.tsx changes
+  // the page state to the 2FA screen.
+  if (page === "login") {
+    return (
+      <LoginPage
+        loginUsername={loginUsername}
+        loginPassword={loginPassword}
+        loginError={loginError}
+        setLoginUsername={setLoginUsername}
+        setLoginPassword={setLoginPassword}
+        handleLogin={handleLogin}
+      />
+    )
+  }
 
   if (page === "twoFactor") {
     return (
@@ -287,8 +302,8 @@ if (page === "login") {
           <div className="mt-6 rounded-xl border border-zinc-800 p-4">
             <h2 className="font-semibold">Step 1: Prepare 2FA Account</h2>
             <p className="mt-1 text-sm text-zinc-400">
-              This step sends the current user to the backend so that
-              a 2FA secret can be created.
+              This step sends the current user to the backend so that a 2FA
+              secret can be created.
             </p>
             <button
               className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
@@ -322,7 +337,7 @@ if (page === "login") {
             </button>
 
             {secret && (
-              <div className="mt-2 break-all font-mono text-xs text-zinc-400">
+              <div className="mt-2 font-mono text-xs break-all text-zinc-400">
                 Secret: {secret}
               </div>
             )}
@@ -415,31 +430,33 @@ if (page === "login") {
     )
   }
 
-if (page === "admin") {
-  return (
-    <AdminDashboard
-      users={users}
-      newUsername={newUsername}
-      newPassword={newPassword}
-      newRole={newRole}
-      setNewUsername={setNewUsername}
-      setNewPassword={setNewPassword}
-      setNewRole={setNewRole}
-      handleAddUser={handleAddUser}
-      handleToggleKeygen={handleToggleKeygen}
-      handleDeleteUser={handleDeleteUser}
-      handleLogout={handleLogout}
-    />
-  )
-}
+  if (page === "admin") {
+    return (
+      <AdminDashboard
+        users={users}
+        newUsername={newUsername}
+        newEmail={newEmail}
+        newPassword={newPassword}
+        newRole={newRole}
+        setNewUsername={setNewUsername}
+        setNewEmail={setNewEmail}
+        setNewPassword={setNewPassword}
+        setNewRole={setNewRole}
+        handleAddUser={handleAddUser}
+        handleToggleKeygen={handleToggleKeygen}
+        handleDeleteUser={handleDeleteUser}
+        handleLogout={handleLogout}
+      />
+    )
+  }
 
   return (
     <div className="flex min-h-svh min-w-svw items-center justify-center bg-zinc-950 p-6 text-white">
       <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center shadow-xl">
         <h1 className="text-2xl font-bold">Chess Game Access Granted</h1>
         <p className="mt-3 text-sm text-zinc-400">
-          The user has passed password authentication and 2FA verification.
-          This page can later be connected to the chess game implementation.
+          The user has passed password authentication and 2FA verification. This
+          page can later be connected to the chess game implementation.
         </p>
 
         <button

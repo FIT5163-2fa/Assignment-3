@@ -41,17 +41,13 @@ def _user_response(user: User) -> UserResponse:
 
 
 def _admin_user_response(user: User) -> AdminUserResponse:
-    two_factor_secret = user.two_factor_secret
-    if isinstance(two_factor_secret, bytes):
-        two_factor_secret = two_factor_secret.decode()
-
     return AdminUserResponse(
         id=user.id,
         username=user.username,
         email=user.email,
         role=user.role,
         hashed_password=user.hashed_password,
-        two_factor_secret=two_factor_secret,
+        two_factor_secret=user.two_factor_secret if user.two_factor_secret else None,
     )
 
 

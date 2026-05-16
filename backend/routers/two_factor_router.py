@@ -50,9 +50,10 @@ def _generate_totp(user) -> int:
 
 def _create_totp_uri(user, secret: bytes) -> str:
     label = quote(f"{settings.TOTP_ISSUER}:{user.email}")
+    secret_b64 = base64.urlsafe_b64encode(secret).decode("ascii")
     params = urlencode(
         {
-            "secret": secret,
+            "secret": secret_b64,
             "issuer": settings.TOTP_ISSUER,
             "algorithm": "SHA256",
             "digits": settings.TOTP_DIGITS,
