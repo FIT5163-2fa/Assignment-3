@@ -10,25 +10,27 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.adapters.db import get_db
+from backend.adapters.jwt import create_access_token
 from backend.adapters.user_service import (
     get_user,
     update_two_factor_secret,
 )
-from backend.schemas.two_factor_schema import CreateKeyResponse, ErrorResponse
+from backend.schemas.two_factor_schema import (
+    CreateKeyResponse,
+    ErrorResponse,
+    TokenResponse,
+)
+from init import get_settings
 
 two_factor_router = APIRouter(tags=["2FA"])
-
-TOTP_DURATION_SEC = 15
-TOTP_DIGITS = 6
-TOTP_ISSUER = "Secure Chess"
-
+settings = get_settings()
 
 def _generate_totp(user) -> int:
     # HMAC Hash
     secret = base64.urlsafe_b64decode(user.two_factor_secret)
     digest = hmac.HMAC(secret, hashes.SHA256())
     # Calculate Counter floor(unix_time/totp_duration)
-    counter = floor(int(time.time()) / TOTP_DURATION_SEC)
+    counter = floor(int(time.time()) / settings.TOTP_DURATION_SEC)
     # Format hash output as a 8 byte big-endian number
     digest.update(counter.to_bytes(8, "big"))
     hash = digest.finalize()
@@ -40,18 +42,18 @@ def _generate_totp(user) -> int:
     # Mask off top bit
     offset = int.from_bytes(offset, "big") & 0x7FFFFFFF
 
-    return offset % 10**TOTP_DIGITS
+    return offset % 10**settings.TOTP_DIGITS
 
 
 def _create_totp_uri(user, secret: bytes) -> str:
-    label = quote(f"{TOTP_ISSUER}:{user.email}")
+    label = quote(f"{settings.TOTP_ISSUER}:{user.email}")
     params = urlencode(
         {
             "secret": secret.decode(),
-            "issuer": TOTP_ISSUER,
+            "issuer": settings.TOTP_ISSUER,
             "algorithm": "SHA256",
-            "digits": TOTP_DIGITS,
-            "period": TOTP_DURATION_SEC,
+            "digits": settings.TOTP_DIGITS,
+            "period": settings.TOTP_DURATION_SEC,
         }
     )
     return f"otpauth://totp/{label}?{params}"
@@ -60,15 +62,22 @@ def _create_totp_uri(user, secret: bytes) -> str:
 @two_factor_router.get(
     "/validate_2fa_key",
     description="Checks if supplied 2fa code is correct",
+    responses={
+        401: {"description": "Invalid two factor code"},
+        404: {"description": "User or 2fa secret not found"},
+    },
+    response_model=Union[TokenResponse, ErrorResponse],
 )
 def validate_2fa_key(
     user_id: int, user_totp: int, db: Session = Depends(get_db)
-) -> bool:
+) -> TokenResponse:
     user = get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     if user.two_factor_secret:
-        return user_totp == _generate_totp(user)
+        if user_totp == _generate_totp(user):
+            return TokenResponse(access_token=create_access_token(user))
+        raise HTTPException(status_code=401, detail="Invalid two factor code")
     else:
         raise HTTPException(status_code=404, detail="No two factor secret not found")
 
