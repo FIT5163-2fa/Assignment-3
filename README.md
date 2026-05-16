@@ -11,3 +11,11 @@ Install uv package manager, [instructions here](https://docs.astral.sh/uv/gettin
 #### For Development (Hot-reload)
 `uv run uvicorn init:app --reload`\
 Note: Swagger api page is available at the `\docs` endpoint
+
+
+#### Using Fastapi Dev
+`uv run fastapi dev`
+Works due to fastapi entrypoint override in pyproject.toml
+
+To see docs go to (http://127.0.0.1:8000/docs) after running
+
