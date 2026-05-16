@@ -1,4 +1,5 @@
 from typing import Annotated
+
 from pydantic import BaseModel, EmailStr, Field, SecretStr
 
 from backend.adapters.models import UserRole
@@ -23,7 +24,7 @@ class UserResponse(BaseModel):
 
 class AdminUserResponse(UserResponse):
     hashed_password: str
-    two_factor_secret: str | None
+    two_factor_secret: bytes | None
 
 
 class ErrorResponse(BaseModel):
