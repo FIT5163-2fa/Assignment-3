@@ -26,8 +26,8 @@ export function LoginPage({
         <h1 className="text-2xl font-bold">Login to 2FA Chess System</h1>
 
         <p className="mt-2 text-sm text-zinc-400">
-          Please log in first. After the password check, you will need to
-          complete the 2FA step.
+          Please sign in with your account first. If the password is correct and the keygen account is enabled,
+          you will continue to the 2FA verification step.
         </p>
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={handleLogin}>
@@ -65,8 +65,8 @@ export function LoginPage({
 
         {/* These demo accounts make it easier to test the assignment locally. */}
         <div className="mt-6 rounded-lg bg-zinc-950 p-4 text-sm text-zinc-400">
-          <p>Demo admin: admin / admin123</p>
-          <p>Demo user: user / user123</p>
+          <p>Admin test: admin / admin123</p>
+          <p>Normal user test account: user / user123</p>
         </div>
       </div>
     </div>

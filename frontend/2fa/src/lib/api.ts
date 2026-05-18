@@ -30,10 +30,26 @@ async function getErrorMessage(response: Response) {
 
   try {
     const errorData = JSON.parse(errorText)
-    return errorData.detail || errorText
+    return formatErrorMessage(errorData.detail || errorText)
   } catch {
-    return errorText || "Request failed"
+    return formatErrorMessage(errorText || "Request failed")
   }
+}
+
+function formatErrorMessage(message: string) {
+  if (message === "Failed to fetch") {
+    return "Cannot connect to the backend. Please check that the backend server is running."
+  }
+
+  if (message.includes("User already has a two factor secret")) {
+    return "This user already has a 2FA secret. You can continue to generate and validate a code."
+  }
+
+  if (message.includes("Invalid two factor code")) {
+    return "Invalid 2FA code. Please generate a new code and validate it within 15 seconds."
+  }
+
+  return message
 }
 
 // Temporary helper for local development.
@@ -58,6 +74,12 @@ export async function createTwoFactorKey(userId: number) {
   })
 
   if (!response.ok) {
+    if (response.status === 409) {
+      throw new Error(
+        "This user already has a 2FA secret. You can continue to generate and validate a code."
+      )
+    }
+
     throw new Error(await getErrorMessage(response))
   }
 
