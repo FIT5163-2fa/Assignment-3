@@ -14,9 +14,27 @@ Note: Swagger api page is available at the `\docs` endpoint
 
 ## Admin + Login Frontend
 
-This part implements the login interface and administrator dashboard for the 2FA chess system. The login page checks the username, password, and keygen account status before allowing a user to continue to continue to the two-factor authentication step.
-The admin dashboard supports adding user, deleting users, and enabling or disabling keygen account. Frontend validation is also included, such as duplicate username checking and a safeguard that prevents the current admin account from beging deleted.
-After successful 2FA validation, admin users are redirected to the admin dashboard, while normal users are redirected to the chess access page. 
+This part implements the login interface and administrator dashboard for the 2FA chess system. The login page checks the username, password, and keygen account status before allowing the user to continue to the two-factor authentication step.
+
+The admin dashboard supports adding users, deleting users, and enabling or disabling a user's keygen account. Basic frontend validation is also included, such as duplicate username checking and preventing the current admin account from being deleted.
+
+After successful 2FA validation, admin users are redirected to the admin dashboard, while normal users are redirected to the chess access page.
+
+
+### Demo Notes
+
+For the demo, use the following account:
+
+- Username: `admin`
+- Password: `admin123`
+
+If the admin account already exists and already has a 2FA secret, Step 1 and Step 2 do not need to be repeated. The main demo flow is:
+
+1. Log in as admin.
+2. Generate the temporary 2FA code.
+3. Validate the code within 15 seconds.
+4. Open the admin dashboard.
+5. Test add, disable, enable, and delete user functions.
 
 #### Using Fastapi Dev
 `uv run fastapi dev`
