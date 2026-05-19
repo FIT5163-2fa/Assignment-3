@@ -104,8 +104,8 @@ def create_key(user_id: int, db: Session = Depends(get_db)) -> CreateKeyResponse
             status_code=409,
             detail="User already has a two factor secret",
         )
-    salt: bytes = urandom(32)
-    key: bytes = scrypt(user.email.encode("utf-8"), salt=salt, n=16384, r=8, p=1)
-    # key: bytes = Fernet.generate_key() # Crypto Secure
+    # salt: bytes = urandom(32)
+    # key: bytes = scrypt(user.email.encode("utf-8"), salt=salt, n=16384, r=8, p=1)
+    key: bytes = Fernet.generate_key()  # Crypto Secure
     update_two_factor_secret(db, user_id, key)
     return CreateKeyResponse(uri=_create_totp_uri(user, key))
