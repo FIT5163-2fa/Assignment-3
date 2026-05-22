@@ -11,6 +11,7 @@ import {
 import { useState } from "react"
 import type { SyntheticEvent } from "react"
 import { useMutation } from "@tanstack/react-query"
+import { QRCodeSVG } from "qrcode.react"
 
 const API_BASE = "http://localhost:8000"
 
@@ -92,6 +93,7 @@ export function App() {
 
   const [totp, setTotp] = useState("")
   const [secret, setSecret] = useState<string | null>(null)
+  const [totpUri, setTotpUri] = useState<string | null>(null)
   const [totpValid, setTotpValid] = useState<boolean | null>(null)
 
   const [newUsername, setNewUsername] = useState("")
@@ -143,6 +145,7 @@ export function App() {
       return createSecretKey(currentUser.id)
     },
     onSuccess: (data) => {
+      setTotpUri(data.uri)
       const uri = data.uri.replace("otpauth://", "https://")
       const parsedUrl = new URL(uri)
       const secretParam = parsedUrl.searchParams.get("secret")
@@ -188,6 +191,7 @@ export function App() {
     setTotp("")
     setTotpValid(null)
     setSecret(null)
+    setTotpUri(null)
     setPage("twoFactor")
   }
 
@@ -195,6 +199,7 @@ export function App() {
     setCurrentUser(null)
     setTotp("")
     setSecret(null)
+    setTotpUri(null)
     setTotpValid(null)
     setPage("login")
   }
@@ -332,9 +337,20 @@ export function App() {
               Create Secret
             </button>
 
-            {secret && (
-              <div className="mt-2 font-mono text-xs break-all text-zinc-400">
-                Secret: {secret}
+            {secret && totpUri && (
+              <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-start">
+                <div className="rounded-lg bg-white p-3">
+                  <QRCodeSVG value={totpUri} size={144} />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-zinc-200">
+                    Scan QR code or enter secret manually
+                  </div>
+                  <div className="mt-2 font-mono text-xs break-all text-zinc-400">
+                    Secret: {secret}
+                  </div>
+                </div>
               </div>
             )}
 

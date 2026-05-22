@@ -48,10 +48,10 @@ def _generate_totp(user) -> int:
 
 def _create_totp_uri(user, secret: bytes) -> str:
     label = quote(f"{settings.TOTP_ISSUER}:{user.username}")
-    secret_b64 = base64.urlsafe_b64encode(secret).decode("ascii")
+    secret_base32 = base64.b32encode(secret).decode("ascii").rstrip("=")
     params = urlencode(
         {
-            "secret": secret_b64,
+            "secret": secret_base32,
             "issuer": settings.TOTP_ISSUER,
             "algorithm": "SHA256",
             "digits": settings.TOTP_DIGITS,
@@ -102,8 +102,6 @@ def create_key(user_id: int, db: Session = Depends(get_db)) -> CreateKeyResponse
             status_code=409,
             detail="User already has a two factor secret",
         )
-    # salt: bytes = urandom(32)
-    # key: bytes = scrypt(user.email.encode("utf-8"), salt=salt, n=16384, r=8, p=1)
     key: bytes = Fernet.generate_key()  # Crypto Secure
     update_two_factor_secret(db, user_id, key)
     return CreateKeyResponse(uri=_create_totp_uri(user, key))
