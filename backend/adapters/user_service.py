@@ -1,6 +1,13 @@
 from sqlalchemy.orm import Session
+from hashlib import sha256
+
 from backend.adapters.password_hasher import hash_password, verify_password
 from backend.adapters.models import User, UserRole
+
+
+def hash_email(email: str) -> str:
+    normalized_email = str(email).strip().lower()
+    return sha256(normalized_email.encode("utf-8")).hexdigest()
 
 
 def create_user(
@@ -13,7 +20,7 @@ def create_user(
 ) -> User:
     user = User(
         username=username,
-        email=email,
+        hashed_email=hash_email(email),
         role=role,
         hashed_password=hash_password(plain_password),
         two_factor_secret=two_factor_secret,
@@ -33,7 +40,7 @@ def get_user_by_username(db: Session, username: str) -> User | None:
 
 
 def get_user_by_email(db: Session, email: str) -> User | None:
-    return db.query(User).filter(User.email == email).first()
+    return db.query(User).filter(User.hashed_email == hash_email(email)).first()
 
 
 def get_all_users(db: Session) -> list[User]:
@@ -80,7 +87,7 @@ def delete_user(db: Session, user_id: int) -> bool:
 
 
 def authenticate_user(db: Session, email: str, password: str) -> User | None:
-    user = db.query(User).filter(User.email == email).first()
+    user = get_user_by_email(db, email)
 
     if user is None:
         return None

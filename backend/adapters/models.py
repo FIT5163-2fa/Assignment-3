@@ -34,7 +34,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
+    hashed_email: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     username: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole), default=UserRole.USER, nullable=False

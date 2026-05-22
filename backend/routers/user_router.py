@@ -8,6 +8,7 @@ from backend.adapters.game_service import get_games_by_user
 from backend.adapters.jwt import get_current_token_payload, get_optional_token_payload
 from backend.adapters.models import Games, User
 from backend.adapters.user_service import (
+    authenticate_user,
     create_user,
     delete_user,
     get_all_users,
@@ -20,6 +21,8 @@ from backend.schemas.user_schema import (
     AdminUserResponse,
     CreateUser,
     ErrorResponse,
+    LoginResponse,
+    LoginUser,
     UpdateUserRole,
     UserResponse,
 )
@@ -35,7 +38,6 @@ def _user_response(user: User) -> UserResponse:
     return UserResponse(
         id=user.id,
         username=user.username,
-        email=user.email,
         role=user.role,
     )
 
@@ -44,7 +46,7 @@ def _admin_user_response(user: User) -> AdminUserResponse:
     return AdminUserResponse(
         id=user.id,
         username=user.username,
-        email=user.email,
+        hashed_email=user.hashed_email,
         role=user.role,
         hashed_password=user.hashed_password,
         two_factor_secret=user.two_factor_secret if user.two_factor_secret else None,
@@ -87,6 +89,30 @@ def create_app_user(user: CreateUser, db: Session = Depends(get_db)) -> UserResp
         user.password.get_secret_value(),
     )
     return _user_response(created_user)
+
+
+@user_router.post(
+    "/login",
+    description="Authenticates a user by email and password before 2FA",
+    responses={
+        401: {"description": "Invalid email or password"},
+    },
+    response_model=Union[LoginResponse, ErrorResponse],
+)
+def login_app_user(user: LoginUser, db: Session = Depends(get_db)) -> LoginResponse:
+    authenticated_user = authenticate_user(
+        db,
+        str(user.email),
+        user.password.get_secret_value(),
+    )
+    if authenticated_user is None:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    return LoginResponse(
+        user_id=authenticated_user.id,
+        username=authenticated_user.username,
+        two_factor_set=authenticated_user.two_factor_secret is not None,
+    )
 
 
 @user_router.get(

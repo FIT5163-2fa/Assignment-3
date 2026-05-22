@@ -1,8 +1,6 @@
 import base64
 import time
-from hashlib import scrypt
 from math import floor
-from os import urandom
 from typing import Union
 from urllib.parse import quote, urlencode
 
@@ -49,7 +47,7 @@ def _generate_totp(user) -> int:
 
 
 def _create_totp_uri(user, secret: bytes) -> str:
-    label = quote(f"{settings.TOTP_ISSUER}:{user.email}")
+    label = quote(f"{settings.TOTP_ISSUER}:{user.username}")
     secret_b64 = base64.urlsafe_b64encode(secret).decode("ascii")
     params = urlencode(
         {

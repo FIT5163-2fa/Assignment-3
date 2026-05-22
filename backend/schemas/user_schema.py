@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pydantic import BaseModel, EmailStr, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr
 
 from backend.adapters.models import UserRole
 
@@ -11,6 +11,19 @@ class CreateUser(BaseModel):
     password: Annotated[SecretStr, Field(min_length=8)]
 
 
+class LoginUser(BaseModel):
+    email: EmailStr
+    password: SecretStr
+
+
+class LoginResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    user_id: int
+    username: str
+    two_factor_set: bool
+
+
 class UpdateUserRole(BaseModel):
     role: UserRole
 
@@ -18,11 +31,11 @@ class UpdateUserRole(BaseModel):
 class UserResponse(BaseModel):
     id: int
     username: str
-    email: EmailStr
     role: UserRole
 
 
 class AdminUserResponse(UserResponse):
+    hashed_email: str
     hashed_password: str
     two_factor_secret: bytes | None
 
