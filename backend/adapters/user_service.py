@@ -6,6 +6,7 @@ from backend.adapters.models import User, UserRole
 
 
 def hash_email(email: str) -> str:
+    # Normalize first so login and registration hash the same email consistently.
     normalized_email = str(email).strip().lower()
     return sha256(normalized_email.encode("utf-8")).hexdigest()
 

@@ -22,6 +22,7 @@ def get_db():
 
 
 def init_db():
+    # Import models before create_all so SQLAlchemy registers every table.
     from backend.adapters.models import UserRole
     from backend.adapters.user_service import (
         create_user,
@@ -35,6 +36,7 @@ def init_db():
     settings = get_settings()
     db = SessionLocal()
     try:
+        # Bootstrap is idempotent so app restarts do not create duplicate admins.
         admin_user = get_user_by_email(db, settings.ADMIN_EMAIL)
         if admin_user:
             if admin_user.role != UserRole.ADMIN:

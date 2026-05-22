@@ -48,6 +48,7 @@ def _generate_totp(user) -> int:
 
 def _create_totp_uri(user, secret: bytes) -> str:
     label = quote(f"{settings.TOTP_ISSUER}:{user.username}")
+    # Authenticator apps expect the URI secret to be base32.
     secret_base32 = base64.b32encode(secret).decode("ascii").rstrip("=")
     params = urlencode(
         {

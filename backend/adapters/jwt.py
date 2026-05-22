@@ -13,6 +13,7 @@ settings = get_settings()
 
 def create_access_token(user: User) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
+    # Keep sensitive identifiers like email hashes out of bearer tokens.
     payload = {
         "sub": str(user.id),
         "username": user.username,

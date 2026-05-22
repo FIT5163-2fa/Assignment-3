@@ -29,6 +29,7 @@ game_router = APIRouter(prefix="/games", tags=["Games"])
 
 
 def _join_moves(moves: list[str]) -> str:
+    # Store move arrays as one whitespace-separated string in SQLite.
     return " ".join(moves)
 
 
