@@ -6,7 +6,8 @@ import { useAuth } from "@/context/AuthContext"
 import { createTwoFactorKey } from "@/lib/api"
 
 export function TwoFactorSetupPage() {
-  const { currentUser, setupToken, setTwoFactorSecret } = useAuth()
+  const { currentUser, setupToken, setTwoFactorSecret, setValidateToken } =
+    useAuth()
   const navigate = useNavigate()
 
   const [secret, setSecret] = useState<string | null>(null)
@@ -23,8 +24,10 @@ export function TwoFactorSetupPage() {
       }
       return createTwoFactorKey(setupToken)
     },
-    onSuccess: (uri) => {
+    onSuccess: ({ uri, validate_token }) => {
       setTotpUri(uri)
+      setValidateToken(validate_token)
+      console.log("Received TOTP URI:", uri)
       const parsedUri = uri.replace("otpauth://", "https://")
       const parsedUrl = new URL(parsedUri)
       const secretParam = parsedUrl.searchParams.get("secret")
