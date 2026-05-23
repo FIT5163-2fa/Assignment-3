@@ -28,6 +28,7 @@ type AuthContextType = {
   currentUser: CurrentUser | null
   accessToken: string | null
   setupToken: string | null
+  challengeToken: string | null
   chessLoginState: string | null
   chessCallbackUrl: string | null
   isChessLogin: boolean
@@ -37,6 +38,7 @@ type AuthContextType = {
   setCurrentUser: React.Dispatch<React.SetStateAction<CurrentUser | null>>
   setAccessToken: React.Dispatch<React.SetStateAction<string | null>>
   setSetupToken: React.Dispatch<React.SetStateAction<string | null>>
+  setChallengeToken: React.Dispatch<React.SetStateAction<string | null>>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [setupToken, setSetupToken] = useState<string | null>(null)
+  const [challengeToken, setChallengeToken] = useState<string | null>(null)
 
   const chessLoginState = searchParams.get("state")
   const chessCallbackUrl = searchParams.get("callback_url")
@@ -83,16 +86,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       twoFactorSet: loginResponse.two_factor_set,
     })
     setSetupToken(loginResponse.setup_token)
+    setChallengeToken(loginResponse.challenge_token)
     setAccessToken(null)
     navigate("/2fa")
   }
 
   async function completeTwoFactor(totp: string) {
     if (!currentUser) throw new Error("No current user")
+    if (!challengeToken) throw new Error("Missing 2FA challenge token")
 
-    const response = await validateTwoFactorCode(currentUser.id, totp)
+    const response = await validateTwoFactorCode(totp, challengeToken)
 
     setAccessToken(response.token.access_token)
+    setChallengeToken(null)
+    setSetupToken(null)
     setCurrentUser((prev) => {
       if (!prev) return prev
       return {
@@ -128,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentUser(null)
     setAccessToken(null)
     setSetupToken(null)
+    setChallengeToken(null)
     chessCallbackErrorRef.current = null
     navigate("/login")
   }
@@ -138,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         currentUser,
         accessToken,
         setupToken,
+        challengeToken,
         chessLoginState,
         chessCallbackUrl,
         isChessLogin,
@@ -147,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCurrentUser,
         setAccessToken,
         setSetupToken,
+        setChallengeToken,
       }}
     >
       {children}

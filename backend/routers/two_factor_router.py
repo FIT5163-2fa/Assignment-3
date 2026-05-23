@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from backend.adapters.db import get_db
 from backend.adapters.jwt import (
     create_access_token,
+    create_challenge_token,
     get_challenge_token_payload,
     get_setup_token_payload,
 )
@@ -125,5 +126,11 @@ def create_key(
             detail="User already has a two factor secret",
         )
     key: bytes = Fernet.generate_key()  # Crypto Secure
-    update_two_factor_secret(db, user_id, key)
-    return CreateKeyResponse(uri=_create_totp_uri(user, key))
+    updated_user = update_two_factor_secret(db, user_id, key)
+    if updated_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return CreateKeyResponse(
+        uri=_create_totp_uri(user, key),
+        challenge_token=create_challenge_token(updated_user),
+    )

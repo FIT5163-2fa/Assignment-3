@@ -12,6 +12,7 @@ export type LoginResponse = {
   username: string
   two_factor_set: boolean
   setup_token: string | null
+  challenge_token: string | null
   token_type: string
 }
 
@@ -34,6 +35,7 @@ export type CreateUserRequest = {
 
 type CreateKeyResponse = {
   uri: string
+  challenge_token: string
 }
 
 type DebugTotpResponse = {
@@ -250,13 +252,20 @@ export async function createTwoFactorKey(setupToken: string) {
     throw new Error(await getErrorMessage(response))
   }
 
-  const data: CreateKeyResponse = await response.json()
-  return data.uri
+  return (await response.json()) as CreateKeyResponse
 }
 
-export async function validateTwoFactorCode(userId: number, userTotp: string) {
+export async function validateTwoFactorCode(
+  userTotp: string,
+  challengeToken: string,
+) {
   const response = await fetch(
-    `${API_BASE_URL}/validate_2fa_key?user_id=${userId}&user_totp=${userTotp}`,
+    `${API_BASE_URL}/validate_2fa_key?user_totp=${userTotp}`,
+    {
+      headers: {
+        Authorization: `Bearer ${challengeToken}`,
+      },
+    },
   )
 
   if (!response.ok) {

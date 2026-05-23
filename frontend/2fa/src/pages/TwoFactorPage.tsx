@@ -11,7 +11,13 @@ import { createTwoFactorKey, getDebugTotpCode } from "@/lib/api"
 import { getErrorMessage } from "@/lib/utils"
 
 export function TwoFactorPage() {
-  const { currentUser, setupToken, completeTwoFactor, logout } = useAuth()
+  const {
+    currentUser,
+    setupToken,
+    completeTwoFactor,
+    logout,
+    setChallengeToken,
+  } = useAuth()
 
   const [totp, setTotp] = useState("")
   const [secret, setSecret] = useState<string | null>(null)
@@ -30,9 +36,10 @@ export function TwoFactorPage() {
       }
       return createTwoFactorKey(setupToken)
     },
-    onSuccess: (uri) => {
-      setTotpUri(uri)
-      const parsedUri = uri.replace("otpauth://", "https://")
+    onSuccess: (response) => {
+      setTotpUri(response.uri)
+      setChallengeToken(response.challenge_token)
+      const parsedUri = response.uri.replace("otpauth://", "https://")
       const parsedUrl = new URL(parsedUri)
       const secretParam = parsedUrl.searchParams.get("secret")
       if (secretParam) setSecret(secretParam)
