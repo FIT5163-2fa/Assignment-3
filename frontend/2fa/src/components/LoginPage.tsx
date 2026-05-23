@@ -38,7 +38,7 @@ export function LoginPage({
               type="email"
               value={loginEmail}
               onChange={(event) => setLoginEmail(event.target.value)}
-              placeholder="admin@example.com"
+              placeholder="you@example.com"
             />
           </div>
 
@@ -49,7 +49,7 @@ export function LoginPage({
               type="password"
               value={loginPassword}
               onChange={(event) => setLoginPassword(event.target.value)}
-              placeholder="admin123"
+              placeholder="Enter your password"
             />
           </div>
 

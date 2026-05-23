@@ -66,8 +66,8 @@ export function App() {
 
   const [page, setPage] = useState<Page>("login")
 
-  const [loginEmail, setLoginEmail] = useState("admin@example.com")
-  const [loginPassword, setLoginPassword] = useState("admin123")
+  const [loginEmail, setLoginEmail] = useState("")
+  const [loginPassword, setLoginPassword] = useState("")
   const [loginError, setLoginError] = useState("")
 
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
