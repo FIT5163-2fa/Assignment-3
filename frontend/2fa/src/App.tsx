@@ -171,13 +171,20 @@ export function App() {
   const createSecret = useMutation({
     mutationFn: () => {
       if (currentUser === null) throw new Error("No current user")
+      if (currentUser.twoFactorSet) {
+        throw new Error("This user already has 2FA set.")
+      }
       if (setupToken === null) {
-        throw new Error("Please log in through the backend before creating a 2FA secret.")
+        throw new Error("Missing 2FA setup token. Please log in again.")
       }
       return createTwoFactorKey(setupToken)
     },
     onSuccess: (uri) => {
       setTotpUri(uri)
+      setCurrentUser((previousUser) => {
+        if (!previousUser) return previousUser
+        return { ...previousUser, twoFactorSet: true }
+      })
       const parsedUri = uri.replace("otpauth://", "https://")
       const parsedUrl = new URL(parsedUri)
       const secretParam = parsedUrl.searchParams.get("secret")
@@ -352,7 +359,7 @@ export function App() {
             ({currentUser?.role})
           </p>
 
-          {setupToken && (
+          {!currentUser?.twoFactorSet && (
             <div className="mt-6 rounded-xl border border-zinc-800 p-4">
               <h2 className="font-semibold">2FA Setup Required</h2>
               <p className="mt-1 text-sm text-zinc-400">
@@ -405,39 +412,50 @@ export function App() {
           </div>
           */}
 
-          <div className="mt-4 rounded-xl border border-zinc-800 p-4">
-            <h2 className="font-semibold">Step 2: Create 2FA secret</h2>
-            <button
-              className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-              onClick={() => createSecret.mutate()}
-              disabled={!currentUser || createSecret.isPending}
-            >
-              Create Secret
-            </button>
+          {!currentUser?.twoFactorSet && (
+            <div className="mt-4 rounded-xl border border-zinc-800 p-4">
+              <h2 className="font-semibold">Step 2: Create 2FA secret</h2>
+              <button
+                className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+                onClick={() => createSecret.mutate()}
+                disabled={!currentUser || setupToken === null || createSecret.isPending}
+              >
+                Create Secret
+              </button>
 
-            {secret && totpUri && (
-              <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-start">
-                <div className="rounded-lg bg-white p-3">
-                  <QRCodeSVG value={totpUri} size={144} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-zinc-200">
-                    Scan QR code or enter secret manually
+              {secret && totpUri && (
+                <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-start">
+                  <div className="rounded-lg bg-white p-3">
+                    <QRCodeSVG value={totpUri} size={144} />
                   </div>
-                  <div className="mt-2 font-mono text-xs break-all text-zinc-400">
-                    Secret: {secret}
+
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-zinc-200">
+                      Scan QR code or enter secret manually
+                    </div>
+                    <div className="mt-2 font-mono text-xs break-all text-zinc-400">
+                      Secret: {secret}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {createSecret.error && (
-              <div className="mt-2 text-sm text-red-400">
-                {createSecret.error.message}
-              </div>
-            )}
-          </div>
+              {createSecret.error && (
+                <div className="mt-2 text-sm text-red-400">
+                  {createSecret.error.message}
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentUser?.twoFactorSet && (
+            <div className="mt-4 rounded-xl border border-zinc-800 p-4">
+              <h2 className="font-semibold">Step 2: 2FA already set</h2>
+              <p className="mt-1 text-sm text-zinc-400">
+                Continue by entering a current code from your 2FA app.
+              </p>
+            </div>
+          )}
 
           <div className="mt-4 rounded-xl border border-zinc-800 p-4">
             <h2 className="font-semibold">Step 3: Enter TOTP code</h2>
