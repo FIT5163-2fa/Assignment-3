@@ -28,11 +28,14 @@ type AuthContextType = {
   currentUser: CurrentUser | null
   accessToken: string | null
   setupToken: string | null
+  validateToken: string | null
+  twoFactorSecret: string | null
   chessLoginState: string | null
   chessCallbackUrl: string | null
   isChessLogin: boolean
   login: (email: string, password: string) => Promise<void>
   completeTwoFactor: (totp: string) => Promise<void>
+  setTwoFactorSecret: (secret: string | null) => void
   logout: () => void
   setCurrentUser: React.Dispatch<React.SetStateAction<CurrentUser | null>>
   setAccessToken: React.Dispatch<React.SetStateAction<string | null>>
@@ -48,6 +51,29 @@ export function useAuth() {
   return ctx
 }
 
+// DEV: Persist the 2FA secret to localStorage for convenience during development.
+const TWO_FACTOR_SECRET_KEY = "2fa_secret"
+
+function loadSecretFromStorage(): string | null {
+  try {
+    return localStorage.getItem(TWO_FACTOR_SECRET_KEY)
+  } catch {
+    return null
+  }
+}
+
+function saveSecretToStorage(secret: string | null) {
+  try {
+    if (secret) {
+      localStorage.setItem(TWO_FACTOR_SECRET_KEY, secret)
+    } else {
+      localStorage.removeItem(TWO_FACTOR_SECRET_KEY)
+    }
+  } catch {
+    console.log("Failed to access localStorage for 2FA secret persistence.")
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -55,11 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [setupToken, setSetupToken] = useState<string | null>(null)
+  const [validateToken, setValidateToken] = useState<string | null>(null)
+  const [twoFactorSecret, setTwoFactorSecretState] = useState<string | null>(
+    loadSecretFromStorage
+  )
 
   const chessLoginState = searchParams.get("state")
   const chessCallbackUrl = searchParams.get("callback_url")
-  const isChessLogin =
-    chessLoginState !== null && chessCallbackUrl !== null
+  const isChessLogin = chessLoginState !== null && chessCallbackUrl !== null
 
   const chessCallbackErrorRef = useRef<string | null>(null)
 
@@ -73,6 +102,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.history.replaceState({}, "", url.pathname + url.search)
   }, [])
 
+  function setTwoFactorSecret(secret: string | null) {
+    setTwoFactorSecretState(secret)
+    saveSecretToStorage(secret)
+  }
+
   async function login(email: string, password: string) {
     const loginResponse = await loginUserApi(email, password)
 
@@ -83,14 +117,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       twoFactorSet: loginResponse.two_factor_set,
     })
     setSetupToken(loginResponse.setup_token)
+    setValidateToken(loginResponse.validate_token)
     setAccessToken(null)
-    navigate("/2fa")
+
+    if (!loginResponse.two_factor_set) {
+      navigate("/2fa/setup")
+    } else {
+      navigate("/2fa")
+    }
   }
 
   async function completeTwoFactor(totp: string) {
     if (!currentUser) throw new Error("No current user")
+    if (!validateToken)
+      throw new Error("Missing validate token. Please log in again.")
 
-    const response = await validateTwoFactorCode(currentUser.id, totp)
+    const response = await validateTwoFactorCode(
+      currentUser.id,
+      totp,
+      validateToken
+    )
 
     setAccessToken(response.token.access_token)
     setCurrentUser((prev) => {
@@ -114,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await completeChessLoginCallback(
           chessCallbackUrl!,
           chessLoginState!,
-          response.user,
+          response.user
         )
       } catch (error) {
         chessCallbackErrorRef.current = getErrorMessage(error)
@@ -128,6 +174,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentUser(null)
     setAccessToken(null)
     setSetupToken(null)
+    setValidateToken(null)
+    setTwoFactorSecret(null)
     chessCallbackErrorRef.current = null
     navigate("/login")
   }
@@ -138,11 +186,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         currentUser,
         accessToken,
         setupToken,
+        validateToken,
+        twoFactorSecret,
         chessLoginState,
         chessCallbackUrl,
         isChessLogin,
         login,
         completeTwoFactor,
+        setTwoFactorSecret,
         logout,
         setCurrentUser,
         setAccessToken,

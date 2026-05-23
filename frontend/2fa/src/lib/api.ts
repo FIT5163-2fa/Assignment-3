@@ -14,6 +14,7 @@ export type LoginResponse = {
   username: string
   two_factor_set: boolean
   setup_token: string | null
+  validate_token: string | null
   token_type: string
 }
 
@@ -230,9 +231,18 @@ export async function createTwoFactorKey(setupToken: string) {
   return data.uri
 }
 
-export async function validateTwoFactorCode(userId: number, userTotp: string) {
+export async function validateTwoFactorCode(
+  userId: number,
+  userTotp: string,
+  validateToken: string
+) {
   const response = await fetch(
-    `${API_BASE_URL}/validate_2fa_key?user_id=${userId}&user_totp=${userTotp}`
+    `${API_BASE_URL}/validate_2fa_key?user_id=${userId}&user_totp=${userTotp}`,
+    {
+      headers: {
+        Authorization: `Bearer ${validateToken}`,
+      },
+    }
   )
 
   if (!response.ok) {

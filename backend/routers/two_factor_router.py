@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.adapters.db import get_db
-from backend.adapters.jwt import create_access_token, get_setup_token_payload
+from backend.adapters.jwt import create_access_token, get_setup_token_payload, get_validate_token_payload
 from backend.adapters.user_service import (
     get_user,
     update_two_factor_secret,
@@ -74,8 +74,13 @@ def _create_totp_uri(user, secret: bytes) -> str:
     response_model=Union[ValidateTwoFactorResponse, ErrorResponse],
 )
 def validate_2fa_key(
-    user_id: int, user_totp: int, db: Session = Depends(get_db)
+    user_id: int,
+    user_totp: int,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_validate_token_payload),
 ) -> ValidateTwoFactorResponse:
+    if int(payload["sub"]) != user_id:
+        raise HTTPException(status_code=403, detail="Token does not match user")
     user = get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")

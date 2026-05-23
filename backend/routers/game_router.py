@@ -13,6 +13,7 @@ from backend.adapters.game_service import (
     get_game,
     update_game,
 )
+from backend.adapters.jwt import get_access_token_payload
 from backend.adapters.models import Games
 from backend.adapters.user_service import get_user
 from backend.schemas.game_schema import (
@@ -26,6 +27,8 @@ from backend.schemas.game_schema import (
 )
 
 game_router = APIRouter(prefix="/games", tags=["Games"])
+
+# DEV: Any authenticated user can read/write games. Add ownership checks for production.
 
 
 def _join_moves(moves: list[str]) -> str:
@@ -59,7 +62,11 @@ def _game_response(game: Games) -> GameResponse:
     },
     response_model=Union[GameResponse, ErrorResponse],
 )
-def create_chess_game(game: CreateGame, db: Session = Depends(get_db)) -> GameResponse:
+def create_chess_game(
+    game: CreateGame,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_access_token_payload),
+) -> GameResponse:
     user = get_user(db, game.user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -79,7 +86,10 @@ def create_chess_game(game: CreateGame, db: Session = Depends(get_db)) -> GameRe
     description="Returns all chess games",
     response_model=list[GameResponse],
 )
-def get_chess_games(db: Session = Depends(get_db)) -> list[GameResponse]:
+def get_chess_games(
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_access_token_payload),
+) -> list[GameResponse]:
     return [_game_response(game) for game in get_all_games(db)]
 
 
@@ -91,7 +101,11 @@ def get_chess_games(db: Session = Depends(get_db)) -> list[GameResponse]:
     },
     response_model=Union[GameResponse, ErrorResponse],
 )
-def get_chess_game(game_id: int, db: Session = Depends(get_db)) -> GameResponse:
+def get_chess_game(
+    game_id: int,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_access_token_payload),
+) -> GameResponse:
     game = get_game(db, game_id)
     if game is None:
         raise HTTPException(status_code=404, detail="Game not found")
@@ -108,7 +122,9 @@ def get_chess_game(game_id: int, db: Session = Depends(get_db)) -> GameResponse:
     response_model=Union[GameMovesResponse, ErrorResponse],
 )
 def get_chess_game_moves(
-    game_id: int, db: Session = Depends(get_db)
+    game_id: int,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_access_token_payload),
 ) -> GameMovesResponse:
     game = get_game(db, game_id)
     if game is None:
@@ -126,7 +142,10 @@ def get_chess_game_moves(
     response_model=Union[GameResponse, ErrorResponse],
 )
 def update_chess_game(
-    game_id: int, game: UpdateGame, db: Session = Depends(get_db)
+    game_id: int,
+    game: UpdateGame,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_access_token_payload),
 ) -> GameResponse:
     updated_game = update_game(
         db,
@@ -152,7 +171,10 @@ def update_chess_game(
     response_model=Union[GameResponse, ErrorResponse],
 )
 def append_chess_game_move(
-    game_id: int, move: AppendMove, db: Session = Depends(get_db)
+    game_id: int,
+    move: AppendMove,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_access_token_payload),
 ) -> GameResponse:
     updated_game = append_game_move(db, game_id, move.move)
     if updated_game is None:
@@ -170,7 +192,10 @@ def append_chess_game_move(
     response_model=Union[GameResponse, ErrorResponse],
 )
 def finish_chess_game(
-    game_id: int, game: FinishGame, db: Session = Depends(get_db)
+    game_id: int,
+    game: FinishGame,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_access_token_payload),
 ) -> GameResponse:
     updated_game = finish_game(
         db,
@@ -191,7 +216,11 @@ def finish_chess_game(
         404: {"description": "Game not found"},
     },
 )
-def delete_chess_game(game_id: int, db: Session = Depends(get_db)) -> bool:
+def delete_chess_game(
+    game_id: int,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_access_token_payload),
+) -> bool:
     deleted = delete_game(db, game_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Game not found")
