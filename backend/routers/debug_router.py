@@ -1,7 +1,11 @@
 from sqlalchemy.orm import Session
 from typing import Union
 from fastapi import APIRouter, Depends, HTTPException
-from backend.schemas.two_factor_schema import ErrorResponse, GetTOTPResponse, TokenResponse
+from backend.schemas.two_factor_schema import (
+    ErrorResponse,
+    GetTOTPResponse,
+    TokenResponse,
+)
 from backend.schemas.user_schema import CreateUser
 from backend.routers.two_factor_router import _generate_totp
 from backend.adapters.jwt import create_access_token

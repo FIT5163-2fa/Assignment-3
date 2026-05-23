@@ -109,8 +109,7 @@ def get_chess_games(
     payload: dict = Depends(get_access_token_payload),
 ) -> list[GameResponse]:
     return [
-        _game_response(game)
-        for game in get_games_by_user(db, _token_user_id(payload))
+        _game_response(game) for game in get_games_by_user(db, _token_user_id(payload))
     ]
 
 
