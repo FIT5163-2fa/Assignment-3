@@ -1,6 +1,5 @@
 import {
   completeChessLoginCallback,
-  createDebugUser,
   createUser,
   deleteUser,
   createTwoFactorKey,
@@ -38,29 +37,6 @@ type CurrentUser = {
   twoFactorSet: boolean
   // password: string
 }
-
-/*
-const demoUsers: DemoUser[] = [
-  {
-    id: 1,
-    username: "admin",
-    email: "admin@example.com",
-    hashedEmail: "258d8dc916db8d1f2a2f146f67b82dd00741780873926d3bdfc006c7b1b2c143",
-    password: "admin123",
-    role: "admin",
-    twoFactorSet: true,
-  },
-  {
-    id: 2,
-    username: "user",
-    email: "user@example.com",
-    hashedEmail: "b4c9a289323b21a01c3e940f150eb9b8c542587f1abfd8f0e1cc1ffc5e475514",
-    password: "user1234",
-    role: "user",
-    twoFactorSet: true,
-  },
-]
-*/
 
 export function App() {
   const queryClient = useQueryClient()
@@ -150,28 +126,6 @@ export function App() {
       }
     },
   })
-
-  // const debugCreateUser = useMutation({
-  //   mutationFn: () => {
-  //     if (currentUser === null) throw new Error("No current user")
-  //     return createDebugUser(
-  //       {
-  //         username: currentUser.username,
-  //         email: currentUser.email,
-  //         password: currentUser.password,
-  //       }
-  //     )
-  //   },
-  //   onSuccess: (data) => {
-  //     setCurrentUser((previousUser) => {
-  //       if (!previousUser) return previousUser
-  //       return {
-  //         ...previousUser,
-  //         id: data.id,
-  //       }
-  //     })
-  //   },
-  // })
 
   const createSecret = useMutation({
     mutationFn: () => {
@@ -439,35 +393,6 @@ export function App() {
               <dd>{currentUser?.twoFactorSet ? "Yes" : "No"}</dd>
             </dl>
           </div>
-
-          {/*
-          <div className="mt-4 rounded-xl border border-zinc-800 p-4">
-            <h2 className="font-semibold">Step 1: Prepare 2FA Account</h2>
-            <p className="mt-1 text-sm text-zinc-400">
-              This step sends the current user to the backend so that a 2FA
-              secret can be created.
-            </p>
-            <button
-              className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-              onClick={() => debugCreateUser.mutate()}
-              disabled={debugCreateUser.isPending}
-            >
-              Prepare User
-            </button>
-
-            {debugCreateUser.data && (
-              <div className="mt-2 text-sm text-green-400">
-                Backend user ID: {debugCreateUser.data.id}
-              </div>
-            )}
-
-            {debugCreateUser.error && (
-              <div className="mt-2 text-sm text-red-400">
-                {debugCreateUser.error.message}
-              </div>
-            )}
-          </div>
-          */}
 
           {!currentUser?.twoFactorSet && (
             <div className="mt-4 rounded-xl border border-zinc-800 p-4">
