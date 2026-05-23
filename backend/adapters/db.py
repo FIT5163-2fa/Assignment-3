@@ -41,15 +41,23 @@ def init_db():
         if admin_user:
             if admin_user.role != UserRole.ADMIN:
                 update_user_role(db, admin_user.id, UserRole.ADMIN)
-            return
+        else:
+            admin_username = settings.ADMIN_EMAIL.split("@", maxsplit=1)[0]
+            create_user(
+                db,
+                username=admin_username,
+                email=settings.ADMIN_EMAIL,
+                plain_password=settings.ADMIN_PASSWORD,
+                role=UserRole.ADMIN,
+            )
 
-        admin_username = settings.ADMIN_EMAIL.split("@", maxsplit=1)[0]
-        create_user(
-            db,
-            username=admin_username,
-            email=settings.ADMIN_EMAIL,
-            plain_password=settings.ADMIN_PASSWORD,
-            role=UserRole.ADMIN,
-        )
+        if get_user_by_email(db, "user@example.com") is None:
+            create_user(
+                db,
+                username="user",
+                email="user@example.com",
+                plain_password="user1234",
+                role=UserRole.USER,
+            )
     finally:
         db.close()

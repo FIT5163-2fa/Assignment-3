@@ -33,7 +33,8 @@ type CurrentUser = {
   username: string
   role?: UserRole
   email: string
-  password: string
+  twoFactorSet: boolean
+  // password: string
 }
 
 /*
@@ -125,27 +126,27 @@ export function App() {
     },
   })
 
-  const debugCreateUser = useMutation({
-    mutationFn: () => {
-      if (currentUser === null) throw new Error("No current user")
-      return createDebugUser(
-        {
-          username: currentUser.username,
-          email: currentUser.email,
-          password: currentUser.password,
-        }
-      )
-    },
-    onSuccess: (data) => {
-      setCurrentUser((previousUser) => {
-        if (!previousUser) return previousUser
-        return {
-          ...previousUser,
-          id: data.id,
-        }
-      })
-    },
-  })
+  // const debugCreateUser = useMutation({
+  //   mutationFn: () => {
+  //     if (currentUser === null) throw new Error("No current user")
+  //     return createDebugUser(
+  //       {
+  //         username: currentUser.username,
+  //         email: currentUser.email,
+  //         password: currentUser.password,
+  //       }
+  //     )
+  //   },
+  //   onSuccess: (data) => {
+  //     setCurrentUser((previousUser) => {
+  //       if (!previousUser) return previousUser
+  //       return {
+  //         ...previousUser,
+  //         id: data.id,
+  //       }
+  //     })
+  //   },
+  // })
 
   const createSecret = useMutation({
     mutationFn: () => {
@@ -188,7 +189,7 @@ export function App() {
         id: loginResponse.user_id,
         username: loginResponse.username,
         email: loginEmail,
-        password: loginPassword,
+        twoFactorSet: loginResponse.two_factor_set,
       })
       setTotp("")
       setTotpValid(null)
@@ -341,6 +342,21 @@ export function App() {
           )}
 
           <div className="mt-4 rounded-xl border border-zinc-800 p-4">
+            <h2 className="font-semibold">Current User Details</h2>
+            <dl className="mt-3 grid grid-cols-[120px_1fr] gap-2 text-sm">
+              <dt className="text-zinc-400">User ID</dt>
+              <dd>{currentUser?.id}</dd>
+              <dt className="text-zinc-400">Username</dt>
+              <dd>{currentUser?.username}</dd>
+              <dt className="text-zinc-400">Email</dt>
+              <dd>{currentUser?.email}</dd>
+              <dt className="text-zinc-400">2FA Set</dt>
+              <dd>{currentUser?.twoFactorSet ? "Yes" : "No"}</dd>
+            </dl>
+          </div>
+
+          {/*
+          <div className="mt-4 rounded-xl border border-zinc-800 p-4">
             <h2 className="font-semibold">Step 1: Prepare 2FA Account</h2>
             <p className="mt-1 text-sm text-zinc-400">
               This step sends the current user to the backend so that a 2FA
@@ -366,6 +382,7 @@ export function App() {
               </div>
             )}
           </div>
+          */}
 
           <div className="mt-4 rounded-xl border border-zinc-800 p-4">
             <h2 className="font-semibold">Step 2: Create 2FA secret</h2>

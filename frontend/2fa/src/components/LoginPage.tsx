@@ -66,8 +66,8 @@ export function LoginPage({
 
         {/* These demo accounts make it easier to test the assignment locally. */}
         <div className="mt-6 rounded-lg bg-zinc-950 p-4 text-sm text-zinc-400">
-          <p>Admin test: admin@example.com / admin123</p>
-          <p>Normal user test account: user@example.com / user123</p>
+          <p>Admin test: admin@example.com / password</p>
+          <p>Normal user test account: user@example.com / user1234</p>
         </div>
       </div>
     </div>
