@@ -183,18 +183,13 @@ export function App() {
       return
     }
 
-    if (!matchedUser.twoFactorSet) {
-      setLoginError("This user needs to set up 2FA before verification.")
-      return
-    }
-
     setCurrentUser(matchedUser)
     setTotp("")
     setTotpValid(null)
     setSecret(null)
     setTotpUri(null)
     setAccessToken(null)
-    setSetupToken(null)
+    setSetupToken(matchedUser.twoFactorSet ? null : "placeholder-setup-token")
     setPage("twoFactor")
   }
 
@@ -325,7 +320,17 @@ export function App() {
             ({currentUser?.role})
           </p>
 
-          <div className="mt-6 rounded-xl border border-zinc-800 p-4">
+          {setupToken && (
+            <div className="mt-6 rounded-xl border border-zinc-800 p-4">
+              <h2 className="font-semibold">2FA Setup Required</h2>
+              <p className="mt-1 text-sm text-zinc-400">
+                Password accepted. This account needs a 2FA secret before
+                verification.
+              </p>
+            </div>
+          )}
+
+          <div className="mt-4 rounded-xl border border-zinc-800 p-4">
             <h2 className="font-semibold">Step 1: Prepare 2FA Account</h2>
             <p className="mt-1 text-sm text-zinc-400">
               This step sends the current user to the backend so that a 2FA
