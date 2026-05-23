@@ -1,5 +1,7 @@
 const API_BASE_URL = "http://127.0.0.1:8000"
 
+const TOTP_DURATION_SEC = 15
+
 export type UserRole = "admin" | "user"
 
 type TokenResponse = {
@@ -159,19 +161,6 @@ export async function resetUserTwoFactor(userId: number, accessToken: string) {
   return (await response.json()) as UserResponse
 }
 
-export async function getDebugTotpCode(userId: number) {
-  const response = await fetch(
-    `${API_BASE_URL}/DEBUG_get_2fa_key?user_id=${userId}`
-  )
-
-  if (!response.ok) {
-    throw new Error(await getErrorMessage(response))
-  }
-
-  const data: DebugTotpResponse = await response.json()
-  return data.totp_code.toString().padStart(6, "0")
-}
-
 async function getErrorMessage(response: Response) {
   const errorText = await response.text()
 
@@ -251,4 +240,34 @@ export async function validateTwoFactorCode(userId: number, userTotp: string) {
   }
 
   return (await response.json()) as ValidateTwoFactorResponse
+}
+
+export { TOTP_DURATION_SEC }
+
+export async function generateTotp(secret: ArrayBuffer): Promise<string> {
+  const counter = Math.floor(Date.now() / 1000 / TOTP_DURATION_SEC)
+
+  const counterBuffer = new ArrayBuffer(8)
+  new DataView(counterBuffer).setBigInt64(0, BigInt(counter), false)
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    secret,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  )
+
+  const hash = new Uint8Array(
+    await crypto.subtle.sign("HMAC", cryptoKey, counterBuffer)
+  )
+
+  const offset = hash[hash.length - 1] & 0b1111
+  const binary =
+    ((hash[offset] & 0x7f) << 24) |
+    (hash[offset + 1] << 16) |
+    (hash[offset + 2] << 8) |
+    hash[offset + 3]
+
+  return (binary % 1_000_000).toString().padStart(6, "0")
 }
