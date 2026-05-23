@@ -7,6 +7,7 @@ type LoginPageProps = {
   setLoginEmail: Dispatch<SetStateAction<string>>
   setLoginPassword: Dispatch<SetStateAction<string>>
   handleLogin: (event: SyntheticEvent<HTMLFormElement>) => void
+  setPage: Dispatch<SetStateAction<string>>
 }
 
 // I moved the login UI into a separate component to keep App.tsx shorter.
@@ -19,6 +20,7 @@ export function LoginPage({
   setLoginEmail,
   setLoginPassword,
   handleLogin,
+  setPage,
 }: LoginPageProps) {
   return (
     <div className="flex min-h-svh min-w-svw items-center justify-center bg-zinc-950 p-6 text-white">
@@ -64,7 +66,13 @@ export function LoginPage({
           </button>
         </form>
 
-        {/* These demo accounts make it easier to test the assignment locally. */}
+        <button
+          className="mt-4 w-full rounded-lg bg-zinc-700 px-4 py-2 text-white hover:bg-zinc-600"
+          onClick={() => setPage("register")}
+        >
+          Don&apos;t have an account? Register
+        </button>
+
         <div className="mt-6 rounded-lg bg-zinc-950 p-4 text-sm text-zinc-400">
           <p>Admin test: admin@example.com / password</p>
           <p>Normal user test account: user@example.com / user1234</p>

@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction, SyntheticEvent } from "react"
-import type { AdminUserResponse, UserRole } from "../lib/api"
+import type { AdminUserResponse, UserRole } from "@/lib/api"
 
 type AdminDashboardProps = {
   users: AdminUserResponse[]
@@ -11,7 +11,9 @@ type AdminDashboardProps = {
   setNewEmail: Dispatch<SetStateAction<string>>
   setNewPassword: Dispatch<SetStateAction<string>>
   setNewRole: Dispatch<SetStateAction<UserRole>>
-  handleAddUser: (event: SyntheticEvent<HTMLFormElement>) => void | Promise<void>
+  handleAddUser: (
+    event: SyntheticEvent<HTMLFormElement>
+  ) => void | Promise<void>
   handleResetTwoFactor: (userId: number) => void | Promise<void>
   handleUpdateRole: (userId: number, role: UserRole) => void | Promise<void>
   handleDeleteUser: (userId: number) => void
@@ -49,7 +51,9 @@ export function AdminDashboard({
   errorMessage,
   actionError,
 }: AdminDashboardProps) {
-  const adminCount = users.filter((userItem) => userItem.role === "admin").length
+  const adminCount = users.filter(
+    (userItem) => userItem.role === "admin"
+  ).length
 
   return (
     <div className="min-h-svh min-w-svw bg-zinc-950 p-8 text-white">
@@ -136,7 +140,10 @@ export function AdminDashboard({
             <tbody>
               {isLoadingUsers && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-zinc-400" colSpan={5}>
+                  <td
+                    className="px-4 py-6 text-center text-zinc-400"
+                    colSpan={5}
+                  >
                     Loading users...
                   </td>
                 </tr>
@@ -144,7 +151,10 @@ export function AdminDashboard({
 
               {!isLoadingUsers && errorMessage && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-red-400" colSpan={5}>
+                  <td
+                    className="px-4 py-6 text-center text-red-400"
+                    colSpan={5}
+                  >
                     {errorMessage}
                   </td>
                 </tr>
@@ -169,7 +179,7 @@ export function AdminDashboard({
                       onChange={(event) =>
                         handleUpdateRole(
                           userItem.id,
-                          event.target.value as UserRole,
+                          event.target.value as UserRole
                         )
                       }
                     >
