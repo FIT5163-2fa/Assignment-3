@@ -10,7 +10,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.adapters.db import get_db
-from backend.adapters.jwt import create_access_token, get_setup_token_payload, get_validate_token_payload
+from backend.adapters.jwt import (
+    create_access_token,
+    create_validate_token,
+    get_setup_token_payload,
+    get_validate_token_payload,
+)
 from backend.adapters.user_service import (
     get_user,
     update_two_factor_secret,
@@ -124,4 +129,8 @@ def create_key(
         )
     key: bytes = Fernet.generate_key()  # Crypto Secure
     update_two_factor_secret(db, user_id, key)
-    return CreateKeyResponse(uri=_create_totp_uri(user, key))
+    user = get_user(db, user_id)
+    return CreateKeyResponse(
+        uri=_create_totp_uri(user, key),
+        validate_token=create_validate_token(user),
+    )

@@ -40,6 +40,7 @@ type AuthContextType = {
   setCurrentUser: React.Dispatch<React.SetStateAction<CurrentUser | null>>
   setAccessToken: React.Dispatch<React.SetStateAction<string | null>>
   setSetupToken: React.Dispatch<React.SetStateAction<string | null>>
+  setValidateToken: React.Dispatch<React.SetStateAction<string | null>>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -139,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     )
 
     setSetupToken(null)
+    setAccessToken(response.token.access_token)
     setCurrentUser((prev) => {
       if (!prev) return prev
       return {
@@ -199,6 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCurrentUser,
         setAccessToken,
         setSetupToken,
+        setValidateToken,
       }}
     >
       {children}

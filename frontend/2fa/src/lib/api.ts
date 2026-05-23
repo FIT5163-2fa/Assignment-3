@@ -37,10 +37,7 @@ export type CreateUserRequest = {
 
 type CreateKeyResponse = {
   uri: string
-}
-
-type DebugTotpResponse = {
-  totp_code: number
+  validate_token: string
 }
 
 export type ValidateTwoFactorResponse = {
@@ -52,7 +49,7 @@ export async function completeChessLoginCallback(
   callbackUrl: string,
   state: string,
   user: UserResponse,
-  accessToken: string,
+  accessToken: string
 ) {
   const response = await fetch(callbackUrl, {
     method: "POST",
@@ -230,7 +227,7 @@ export async function createTwoFactorKey(setupToken: string) {
   }
 
   const data: CreateKeyResponse = await response.json()
-  return data.uri
+  return data
 }
 
 export async function validateTwoFactorCode(

@@ -5,6 +5,7 @@ from backend.schemas.user_schema import UserResponse
 
 class CreateKeyResponse(BaseModel):
     uri: str
+    validate_token: str
 
 
 class TokenResponse(BaseModel):
