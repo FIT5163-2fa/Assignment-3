@@ -19,6 +19,11 @@ def create_user(
     role: UserRole = UserRole.USER,
     two_factor_secret: str | None = None,
 ) -> User:
+    if get_user_by_username(db, username) is not None:
+        raise ValueError("Username already exists")
+    if get_user_by_email(db, email) is not None:
+        raise ValueError("Email already exists")
+
     user = User(
         username=username,
         hashed_email=hash_email(email),
@@ -46,6 +51,10 @@ def get_user_by_email(db: Session, email: str) -> User | None:
 
 def get_all_users(db: Session) -> list[User]:
     return db.query(User).all()
+
+
+def count_admin_users(db: Session) -> int:
+    return db.query(User).filter(User.role == UserRole.ADMIN).count()
 
 
 def update_user_role(db: Session, user_id: int, role: UserRole) -> User | None:

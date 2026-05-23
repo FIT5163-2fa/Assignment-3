@@ -10,13 +10,15 @@ from backend.adapters.jwt import (
     get_access_token_payload,
     get_optional_token_payload,
 )
-from backend.adapters.models import Games, User
+from backend.adapters.models import Games, User, UserRole
 from backend.adapters.user_service import (
     authenticate_user,
+    count_admin_users,
     create_user,
     delete_user,
     get_all_users,
     get_user,
+    get_user_by_email,
     get_user_by_username,
     remove_two_factor_secret,
     update_user_role,
@@ -80,12 +82,23 @@ def _is_admin(payload: dict | None) -> bool:
     return payload is not None and payload.get("role") == "admin"
 
 
+def _ensure_unique_user(db: Session, user: CreateUser) -> None:
+    if get_user_by_username(db, user.username) is not None:
+        raise HTTPException(status_code=409, detail="Username already exists")
+    if get_user_by_email(db, str(user.email)) is not None:
+        raise HTTPException(status_code=409, detail="Email already exists")
+
+
 @user_router.post(
     "",
     description="Creates a user with the default USER role",
-    response_model=UserResponse,
+    responses={
+        409: {"description": "Username or email already exists"},
+    },
+    response_model=Union[UserResponse, ErrorResponse],
 )
 def create_app_user(user: CreateUser, db: Session = Depends(get_db)) -> UserResponse:
+    _ensure_unique_user(db, user)
     created_user = create_user(
         db,
         user.username,
@@ -203,6 +216,7 @@ def get_app_user(
     responses={
         403: {"description": "Admin access required"},
         404: {"description": "User not found"},
+        409: {"description": "Cannot demote the last admin"},
     },
     response_model=Union[UserResponse, ErrorResponse],
 )
@@ -213,6 +227,16 @@ def update_app_user_role(
     payload: dict = Depends(get_access_token_payload),
 ) -> UserResponse:
     _require_admin(payload)
+    existing_user = get_user(db, user_id)
+    if existing_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if (
+        existing_user.role == UserRole.ADMIN
+        and user_role.role != UserRole.ADMIN
+        and count_admin_users(db) <= 1
+    ):
+        raise HTTPException(status_code=409, detail="Cannot demote the last admin")
+
     user = update_user_role(db, user_id, user_role.role)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -266,6 +290,7 @@ def get_chess_games_by_user_id(
     responses={
         403: {"description": "Cannot delete another user's account"},
         404: {"description": "User not found"},
+        409: {"description": "Cannot delete the last admin"},
     },
 )
 def delete_app_user(
@@ -280,6 +305,12 @@ def delete_app_user(
             status_code=403,
             detail="Cannot delete another user's account",
         )
+
+    user = get_user(db, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.role == UserRole.ADMIN and count_admin_users(db) <= 1:
+        raise HTTPException(status_code=409, detail="Cannot delete the last admin")
 
     deleted = delete_user(db, user_id)
     if not deleted:

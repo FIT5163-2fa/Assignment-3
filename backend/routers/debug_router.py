@@ -39,12 +39,15 @@ def get_totp_code(user_id: int, db: Session = Depends(get_db)) -> GetTOTPRespons
     "/DEBUG_CREATE_USER",
 )
 def DEBUG_CREATE_USER(user: CreateUser, db: Session = Depends(get_db)):
-    return create_user(
-        db,
-        user.username,
-        user.email,
-        user.password.get_secret_value(),
-    )
+    try:
+        return create_user(
+            db,
+            user.username,
+            user.email,
+            user.password.get_secret_value(),
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
 
 
 @debug_router.post(
