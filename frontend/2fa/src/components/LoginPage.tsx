@@ -1,10 +1,10 @@
 import type { Dispatch, SetStateAction, SyntheticEvent } from "react"
 
 type LoginPageProps = {
-  loginUsername: string
+  loginEmail: string
   loginPassword: string
   loginError: string
-  setLoginUsername: Dispatch<SetStateAction<string>>
+  setLoginEmail: Dispatch<SetStateAction<string>>
   setLoginPassword: Dispatch<SetStateAction<string>>
   handleLogin: (event: SyntheticEvent<HTMLFormElement>) => void
 }
@@ -13,10 +13,10 @@ type LoginPageProps = {
 // The actual login checking still happens in App.tsx because it needs access
 // to the current user list and page state.
 export function LoginPage({
-  loginUsername,
+  loginEmail,
   loginPassword,
   loginError,
-  setLoginUsername,
+  setLoginEmail,
   setLoginPassword,
   handleLogin,
 }: LoginPageProps) {
@@ -32,12 +32,13 @@ export function LoginPage({
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={handleLogin}>
           <div>
-            <label className="text-sm font-medium">Username</label>
+            <label className="text-sm font-medium">Email</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
-              value={loginUsername}
-              onChange={(event) => setLoginUsername(event.target.value)}
-              placeholder="admin"
+              type="email"
+              value={loginEmail}
+              onChange={(event) => setLoginEmail(event.target.value)}
+              placeholder="admin@example.com"
             />
           </div>
 
@@ -65,8 +66,8 @@ export function LoginPage({
 
         {/* These demo accounts make it easier to test the assignment locally. */}
         <div className="mt-6 rounded-lg bg-zinc-950 p-4 text-sm text-zinc-400">
-          <p>Admin test: admin / admin123</p>
-          <p>Normal user test account: user / user123</p>
+          <p>Admin test: admin@example.com / admin123</p>
+          <p>Normal user test account: user@example.com / user123</p>
         </div>
       </div>
     </div>

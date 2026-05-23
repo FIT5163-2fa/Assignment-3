@@ -5,6 +5,7 @@ import {
   createTwoFactorKey,
   getAdminUsers,
   getDebugTotpCode,
+  loginUser,
   resetUserTwoFactor,
   updateUserRole,
   validateTwoFactorCode,
@@ -27,16 +28,15 @@ import { QRCodeSVG } from "qrcode.react"
 
 type Page = "login" | "twoFactor" | "admin" | "chess"
 
-type DemoUser = {
+type CurrentUser = {
   id: number
   username: string
+  role?: UserRole
   email: string
-  hashedEmail?: string
   password: string
-  role: UserRole
-  twoFactorSet: boolean
 }
 
+/*
 const demoUsers: DemoUser[] = [
   {
     id: 1,
@@ -57,6 +57,7 @@ const demoUsers: DemoUser[] = [
     twoFactorSet: true,
   },
 ]
+*/
 
 
 export function App() {
@@ -64,12 +65,11 @@ export function App() {
 
   const [page, setPage] = useState<Page>("login")
 
-  const [loginUsername, setLoginUsername] = useState("admin")
+  const [loginEmail, setLoginEmail] = useState("admin@example.com")
   const [loginPassword, setLoginPassword] = useState("admin123")
   const [loginError, setLoginError] = useState("")
 
-  const [currentUser, setCurrentUser] = useState<DemoUser | null>(null)
-  const [users, setUsers] = useState<DemoUser[]>(demoUsers)
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
 
   const [totp, setTotp] = useState("")
   const [secret, setSecret] = useState<string | null>(null)
@@ -177,29 +177,30 @@ export function App() {
 
   // Handles the first login step before 2FA.
   // The user can continue only if the password is correct and 2FA is set.
-  function handleLogin(event: SyntheticEvent<HTMLFormElement>) {
+  async function handleLogin(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoginError("")
 
-    const matchedUser = users.find(
-      (userItem) =>
-        userItem.username === loginUsername &&
-        userItem.password === loginPassword
-    )
+    try {
+      const loginResponse = await loginUser(loginEmail, loginPassword)
 
-    if (!matchedUser) {
-      setLoginError("Invalid username or password.")
+      setCurrentUser({
+        id: loginResponse.user_id,
+        username: loginResponse.username,
+        email: loginEmail,
+        password: loginPassword,
+      })
+      setTotp("")
+      setTotpValid(null)
+      setSecret(null)
+      setTotpUri(null)
+      setAccessToken(null)
+      setSetupToken(loginResponse.setup_token)
+      setPage("twoFactor")
+    } catch (error) {
+      setLoginError(getErrorMessage(error))
       return
     }
-
-    setCurrentUser(matchedUser)
-    setTotp("")
-    setTotpValid(null)
-    setSecret(null)
-    setTotpUri(null)
-    setAccessToken(null)
-    setSetupToken(matchedUser.twoFactorSet ? null : "placeholder-setup-token")
-    setPage("twoFactor")
   }
 
   function handleLogout() {
@@ -306,10 +307,10 @@ export function App() {
   if (page === "login") {
     return (
       <LoginPage
-        loginUsername={loginUsername}
+        loginEmail={loginEmail}
         loginPassword={loginPassword}
         loginError={loginError}
-        setLoginUsername={setLoginUsername}
+        setLoginEmail={setLoginEmail}
         setLoginPassword={setLoginPassword}
         handleLogin={handleLogin}
       />
