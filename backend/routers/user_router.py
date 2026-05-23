@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from backend.adapters.db import get_db
 from backend.adapters.jwt import (
+    create_challenge_token,
     create_setup_token,
     get_access_token_payload,
 )
@@ -119,6 +120,9 @@ def login_app_user(user: LoginUser, db: Session = Depends(get_db)) -> LoginRespo
         username=authenticated_user.username,
         two_factor_set=two_factor_set,
         setup_token=None if two_factor_set else create_setup_token(authenticated_user),
+        challenge_token=create_challenge_token(authenticated_user)
+        if two_factor_set
+        else None,
     )
 
 

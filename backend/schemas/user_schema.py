@@ -23,6 +23,7 @@ class LoginResponse(BaseModel):
     username: str
     two_factor_set: bool
     setup_token: str | None = None
+    challenge_token: str | None = None
     token_type: str = "bearer"
 
 
