@@ -48,7 +48,7 @@ export type ValidateTwoFactorResponse = {
 export async function completeChessLoginCallback(
   callbackUrl: string,
   state: string,
-  user: UserResponse,
+  user: UserResponse
 ) {
   const response = await fetch(callbackUrl, {
     method: "POST",
@@ -111,7 +111,7 @@ export async function getAdminUsers(accessToken: string) {
 export async function updateUserRole(
   userId: number,
   role: UserRole,
-  accessToken: string,
+  accessToken: string
 ) {
   const response = await fetch(`${API_BASE_URL}/users/${userId}/role`, {
     method: "PUT",
@@ -144,20 +144,6 @@ export async function deleteUser(userId: number, accessToken: string) {
   return (await response.json()) as boolean
 }
 
-export async function createDebugUser(user: CreateUserRequest) {
-  const response = await fetch(`${API_BASE_URL}/DEBUG_CREATE_USER`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(user),
-  })
-
-  if (!response.ok) {
-    throw new Error(await getErrorMessage(response))
-  }
-
-  return (await response.json()) as UserResponse
-}
-
 export async function resetUserTwoFactor(userId: number, accessToken: string) {
   const response = await fetch(`${API_BASE_URL}/users/${userId}/2fa`, {
     method: "DELETE",
@@ -174,7 +160,9 @@ export async function resetUserTwoFactor(userId: number, accessToken: string) {
 }
 
 export async function getDebugTotpCode(userId: number) {
-  const response = await fetch(`${API_BASE_URL}/DEBUG_get_2fa_key?user_id=${userId}`)
+  const response = await fetch(
+    `${API_BASE_URL}/DEBUG_get_2fa_key?user_id=${userId}`
+  )
 
   if (!response.ok) {
     throw new Error(await getErrorMessage(response))
@@ -183,7 +171,6 @@ export async function getDebugTotpCode(userId: number) {
   const data: DebugTotpResponse = await response.json()
   return data.totp_code.toString().padStart(6, "0")
 }
-
 
 async function getErrorMessage(response: Response) {
   const errorText = await response.text()
@@ -256,7 +243,7 @@ export async function createTwoFactorKey(setupToken: string) {
 
 export async function validateTwoFactorCode(userId: number, userTotp: string) {
   const response = await fetch(
-    `${API_BASE_URL}/validate_2fa_key?user_id=${userId}&user_totp=${userTotp}`,
+    `${API_BASE_URL}/validate_2fa_key?user_id=${userId}&user_totp=${userTotp}`
   )
 
   if (!response.ok) {
