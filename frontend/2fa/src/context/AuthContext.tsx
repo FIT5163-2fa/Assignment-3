@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       validateToken
     )
 
-    setAccessToken(response.token.access_token)
+    setSetupToken(null)
     setCurrentUser((prev) => {
       if (!prev) return prev
       return {
@@ -160,7 +160,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await completeChessLoginCallback(
           chessCallbackUrl!,
           chessLoginState!,
-          response.user
+          response.user,
+          response.token.access_token,
         )
       } catch (error) {
         chessCallbackErrorRef.current = getErrorMessage(error)
