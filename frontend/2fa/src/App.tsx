@@ -1,4 +1,5 @@
 import {
+  completeChessLoginCallback,
   createDebugUser,
   createUser,
   deleteUser,
@@ -24,6 +25,7 @@ import { useState } from "react"
 import type { SyntheticEvent } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
+import { getErrorMessage } from "./lib/utils"
 
 
 type Page = "login" | "twoFactor" | "admin" | "chess"
@@ -84,6 +86,12 @@ export function App() {
   const [newPassword, setNewPassword] = useState("password123")
   const [newRole, setNewRole] = useState<UserRole>("user")
   const [adminActionError, setAdminActionError] = useState("")
+  const [chessCallbackError, setChessCallbackError] = useState("")
+
+  const queryParams = new URLSearchParams(window.location.search)
+  const chessLoginState = queryParams.get("state")
+  const chessCallbackUrl = queryParams.get("callback_url")
+  const isChessLogin = chessLoginState !== null && chessCallbackUrl !== null
 
   const usersQuery = useQuery({
     queryKey: ["admin-users", accessToken],
@@ -103,7 +111,7 @@ export function App() {
       if (currentUser === null) throw new Error("No current user")
       return validateTwoFactorCode(currentUser.id, totp)
     },
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       setAccessToken(response.token.access_token)
       setTotpValid(true)
       setCurrentUser((previousUser) => {
@@ -121,6 +129,18 @@ export function App() {
       }
 
       if (response.user.role === "user") {
+        if (isChessLogin) {
+          try {
+            await completeChessLoginCallback(
+              chessCallbackUrl,
+              chessLoginState,
+              response.user,
+            )
+          } catch (error) {
+            setChessCallbackError(getErrorMessage(error))
+            return
+          }
+        }
         setPage("chess")
       }
     },
@@ -212,6 +232,7 @@ export function App() {
     setAccessToken(null)
     setSetupToken(null)
     setTotpValid(null)
+    setChessCallbackError("")
     setPage("login")
   }
 
@@ -486,6 +507,12 @@ export function App() {
                 {validateTotp.error.message}
               </div>
             )}
+
+            {chessCallbackError && (
+              <div className="mt-2 text-sm text-red-400">
+                {chessCallbackError}
+              </div>
+            )}
           </div>
 
           <button
@@ -523,13 +550,34 @@ export function App() {
     )
   }
 
+  if (page === "chess") {
+    return (
+      <div className="flex min-h-svh min-w-svw items-center justify-center bg-zinc-950 p-6 text-white">
+        <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center shadow-xl">
+          <h1 className="text-2xl font-bold">Chess Game Access Granted</h1>
+          <p className="mt-3 text-sm text-zinc-400">
+            {isChessLogin
+              ? "You can now close this window."
+              : "The user has passed password authentication and 2FA verification. This page can later be connected to the chess game implementation."}
+          </p>
+
+          <button
+            className="mt-6 rounded-lg bg-zinc-700 px-4 py-2 text-white"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-svh min-w-svw items-center justify-center bg-zinc-950 p-6 text-white">
       <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center shadow-xl">
-        <h1 className="text-2xl font-bold">Chess Game Access Granted</h1>
+        <h1 className="text-2xl font-bold">Unknown Page</h1>
         <p className="mt-3 text-sm text-zinc-400">
-          The user has passed password authentication and 2FA verification. This
-          page can later be connected to the chess game implementation.
+          Return to login and try again.
         </p>
 
         <button
@@ -541,11 +589,6 @@ export function App() {
       </div>
     </div>
   )
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message
-  return "Request failed"
 }
 
 export default App

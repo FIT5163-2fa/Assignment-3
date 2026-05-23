@@ -45,6 +45,27 @@ export type ValidateTwoFactorResponse = {
   token: TokenResponse
 }
 
+export async function completeChessLoginCallback(
+  callbackUrl: string,
+  state: string,
+  user: UserResponse,
+) {
+  const response = await fetch(callbackUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      state,
+      user_id: user.id,
+      username: user.username,
+      role: user.role,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response))
+  }
+}
+
 export async function loginUser(email: string, password: string) {
   const response = await fetch(`${API_BASE_URL}/users/login`, {
     method: "POST",
