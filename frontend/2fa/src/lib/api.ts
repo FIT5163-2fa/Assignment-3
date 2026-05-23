@@ -190,7 +190,11 @@ async function getErrorMessage(response: Response) {
 
   try {
     const errorData = JSON.parse(errorText)
-    return formatErrorMessage(errorData.detail || errorText)
+    const detail = errorData.detail
+    if (Array.isArray(detail)) {
+      return detail.map((item: { msg: string }) => item.msg).join(", ")
+    }
+    return formatErrorMessage(detail || errorText)
   } catch {
     return formatErrorMessage(errorText || "Request failed")
   }
