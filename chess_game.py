@@ -233,7 +233,7 @@ class ChessGame(tk.Toplevel):
         self.ai_depth = ai_depth
 
         username = self.user.get("username", "guest")
-        self.title(f"Secure Chess - logged in as {username}")
+        self.title(f"FIT5163 Chess Game - logged in as {username}")
         self.configure(bg=BG)
         self.resizable(False, False)
 
@@ -665,4 +665,11 @@ def launch_chess(user, ai_depth: int = 3):
     return game
 
 if __name__ == "__main__":
-    launch_chess({"username": "guest"}, ai_depth=3)
+    from login_callback import wait_for_login_callback, LoginCallbackError
+
+    try:
+        result = wait_for_login_callback()
+    except LoginCallbackError as exc:
+        raise SystemExit(f"2FA login failed or timed out: {exc}")
+
+    launch_chess({"username": result.username}, ai_depth=3)

@@ -61,20 +61,42 @@ def wait_for_login_callback(
                 self._send_json_response(403, {"detail": "Invalid state"})
                 return
 
-            if data.get("role") != "user":
-                self._send_json_response(403, {"detail": "Chess login requires USER role"})
+            token = data.get("access_token")
+            if not token:
+                self._send_json_response(403, {"detail": "Missing access token"})
+                return
+            try:
+                import jwt as _jwt
+                from config import get_settings
+
+                _settings = get_settings()
+                claims = _jwt.decode(
+                    token,
+                    _settings.JWT_SECRET_KEY,
+                    algorithms=[_settings.JWT_ALGORITHM],
+                )
+            except Exception:
+                self._send_json_response(
+                    403, {"detail": "Invalid or expired access token"}
+                )
+                return
+
+            if claims.get("role") != "user":
+                self._send_json_response(
+                    403, {"detail": "Chess login requires USER role"}
+                )
                 return
 
             try:
                 received["result"] = LoginCallbackResult(
                     state=state,
-                    user_id=int(data["user_id"]),
-                    username=str(data["username"]),
-                    role=str(data["role"]),
-                    access_token=str(data["access_token"]),
+                    user_id=int(claims["sub"]),
+                    username=str(claims["username"]),
+                    role=str(claims["role"]),
+                    access_token=str(token),
                 )
             except (KeyError, TypeError, ValueError):
-                self._send_json_response(400, {"detail": "Missing user details"})
+                self._send_json_response(400, {"detail": "Malformed token claims"})
                 return
 
             finished.set()
@@ -110,10 +132,21 @@ def wait_for_login_callback(
     server_thread.start()
 
     try:
+        print("=" * 70)
+        print("FIT5163 Chess Game - 2FA login required.")
+        print("A browser window should open. If it does NOT, copy this")
+        print("URL into your browser manually:")
+        print()
+        print(f"  {login_url}")
+        print()
+        print("Waiting for you to log in...")
+        print("=" * 70)
+
         webbrowser.open(login_url)
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline:
             if finished.wait(timeout=0.2):
+                print("Login successful - opening the chess board.")
                 return received["result"]
         raise LoginCallbackError("Timed out waiting for 2FA login callback")
     finally:
