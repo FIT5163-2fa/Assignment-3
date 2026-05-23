@@ -6,6 +6,7 @@ type DemoUser = {
   id: number
   username: string
   email: string
+  hashedEmail?: string
   password: string
   role: UserRole
   twoFactorSet: boolean
@@ -25,6 +26,12 @@ type AdminDashboardProps = {
   handleResetTwoFactor: (userId: number) => void | Promise<void>
   handleDeleteUser: (userId: number) => void
   handleLogout: () => void
+}
+
+function formatHashedEmail(hashedEmail?: string) {
+  if (!hashedEmail) return "Not loaded"
+  if (hashedEmail.length <= 8) return hashedEmail
+  return `${hashedEmail.slice(0, 4)}....${hashedEmail.slice(-4)}`
 }
 
 // I moved the admin UI into its own component so App.tsx is easier to read.
@@ -112,6 +119,7 @@ export function AdminDashboard({
             <thead className="bg-zinc-800 text-zinc-300">
               <tr>
                 <th className="px-4 py-3">Username</th>
+                <th className="px-4 py-3">Hashed Email</th>
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">2FA Status</th>
                 <th className="px-4 py-3">Actions</th>
@@ -122,6 +130,9 @@ export function AdminDashboard({
               {users.map((userItem) => (
                 <tr key={userItem.id} className="border-t border-zinc-800">
                   <td className="px-4 py-3">{userItem.username}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-zinc-400">
+                    {formatHashedEmail(userItem.hashedEmail)}
+                  </td>
                   <td className="px-4 py-3">{userItem.role}</td>
                   <td className="px-4 py-3">
                     {userItem.twoFactorSet ? "Set" : "Not set"}

@@ -38,8 +38,7 @@ class UserResponse(BaseModel):
 
 class AdminUserResponse(UserResponse):
     hashed_email: str
-    hashed_password: str
-    two_factor_secret: bytes | None
+    two_factor_set: bool
 
 
 class ErrorResponse(BaseModel):

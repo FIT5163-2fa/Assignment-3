@@ -28,6 +28,7 @@ type DemoUser = {
   id: number
   username: string
   email: string
+  hashedEmail?: string
   password: string
   role: UserRole
   twoFactorSet: boolean
@@ -38,6 +39,7 @@ const demoUsers: DemoUser[] = [
     id: 1,
     username: "admin",
     email: "admin@example.com",
+    hashedEmail: "258d8dc916db8d1f2a2f146f67b82dd00741780873926d3bdfc006c7b1b2c143",
     password: "admin123",
     role: "admin",
     twoFactorSet: true,
@@ -46,6 +48,7 @@ const demoUsers: DemoUser[] = [
     id: 2,
     username: "user",
     email: "user@example.com",
+    hashedEmail: "b4c9a289323b21a01c3e940f150eb9b8c542587f1abfd8f0e1cc1ffc5e475514",
     password: "user1234",
     role: "user",
     twoFactorSet: true,

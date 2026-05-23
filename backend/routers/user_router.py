@@ -53,8 +53,7 @@ def _admin_user_response(user: User) -> AdminUserResponse:
         username=user.username,
         hashed_email=user.hashed_email,
         role=user.role,
-        hashed_password=user.hashed_password,
-        two_factor_secret=user.two_factor_secret if user.two_factor_secret else None,
+        two_factor_set=user.two_factor_secret is not None,
     )
 
 
