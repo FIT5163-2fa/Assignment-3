@@ -96,8 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!challengeToken) throw new Error("Missing 2FA challenge token")
 
     const response = await validateTwoFactorCode(totp, challengeToken)
+    const validatedAccessToken = response.token.access_token
 
-    setAccessToken(response.token.access_token)
+    setAccessToken(validatedAccessToken)
     setChallengeToken(null)
     setSetupToken(null)
     setCurrentUser((prev) => {
@@ -122,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           chessCallbackUrl!,
           chessLoginState!,
           response.user,
+          validatedAccessToken,
         )
       } catch (error) {
         chessCallbackErrorRef.current = getErrorMessage(error)
