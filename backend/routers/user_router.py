@@ -112,11 +112,12 @@ def login_app_user(user: LoginUser, db: Session = Depends(get_db)) -> LoginRespo
     if authenticated_user is None:
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    two_factor_set = authenticated_user.two_factor_secret is not None
     return LoginResponse(
         user_id=authenticated_user.id,
         username=authenticated_user.username,
-        two_factor_set=authenticated_user.two_factor_secret is not None,
-        setup_token=create_setup_token(authenticated_user),
+        two_factor_set=two_factor_set,
+        setup_token=None if two_factor_set else create_setup_token(authenticated_user),
     )
 
 
