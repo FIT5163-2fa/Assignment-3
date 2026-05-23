@@ -14,6 +14,7 @@ import {
 import type { UserRole } from "./lib/api"
 
 import { LoginPage } from "./components/LoginPage"
+import { RegisterPage } from "./components/RegisterPage"
 import { AdminDashboard } from "./components/AdminDashboard"
 import {
   InputOTP,
@@ -27,8 +28,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
 import { getErrorMessage } from "./lib/utils"
 
-
-type Page = "login" | "twoFactor" | "admin" | "chess"
+type Page = "login" | "register" | "twoFactor" | "admin" | "chess"
 
 type CurrentUser = {
   id: number
@@ -62,7 +62,6 @@ const demoUsers: DemoUser[] = [
 ]
 */
 
-
 export function App() {
   const queryClient = useQueryClient()
 
@@ -71,6 +70,11 @@ export function App() {
   const [loginEmail, setLoginEmail] = useState("")
   const [loginPassword, setLoginPassword] = useState("")
   const [loginError, setLoginError] = useState("")
+
+  const [registerUsername, setRegisterUsername] = useState("")
+  const [registerEmail, setRegisterEmail] = useState("")
+  const [registerPassword, setRegisterPassword] = useState("")
+  const [registerError, setRegisterError] = useState("")
 
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
 
@@ -135,7 +139,7 @@ export function App() {
             await completeChessLoginCallback(
               chessCallbackUrl,
               chessLoginState,
-              response.user,
+              response.user
             )
           } catch (error) {
             setChessCallbackError(getErrorMessage(error))
@@ -192,13 +196,13 @@ export function App() {
   const generateCode = useMutation({
     mutationFn: async () => {
       if (currentUser === null) throw new Error("No current user")
-        return getDebugTotpCode(currentUser.id)
-      },
-      onSuccess: (code) => {
-        setTotp(code)
-        setTotpValid(null)
-      },
-    })
+      return getDebugTotpCode(currentUser.id)
+    },
+    onSuccess: (code) => {
+      setTotp(code)
+      setTotpValid(null)
+    },
+  })
 
   // Handles the first login step before 2FA.
   // The user can continue only if the password is correct and 2FA is set.
@@ -238,6 +242,43 @@ export function App() {
     setTotpValid(null)
     setChessCallbackError("")
     setPage("login")
+  }
+
+  async function handleRegister(event: SyntheticEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setRegisterError("")
+
+    const trimmedUsername = registerUsername.trim()
+    const trimmedEmail = registerEmail.trim()
+
+    if (!trimmedUsername) {
+      setRegisterError("Username cannot be empty.")
+      return
+    }
+
+    if (!trimmedEmail) {
+      setRegisterError("Email cannot be empty.")
+      return
+    }
+
+    if (!registerPassword) {
+      setRegisterError("Password cannot be empty.")
+      return
+    }
+
+    try {
+      await createUser({
+        username: trimmedUsername,
+        email: trimmedEmail,
+        password: registerPassword,
+      })
+      setRegisterUsername("")
+      setRegisterEmail("")
+      setRegisterPassword("")
+      setPage("login")
+    } catch (error) {
+      setRegisterError(getErrorMessage(error))
+    }
   }
 
   // Adds a new user in the admin dashboard.
@@ -313,7 +354,9 @@ export function App() {
   async function handleDeleteUser(userId: number) {
     if (!accessToken) return
     setAdminActionError("")
-    const selectedUser = usersQuery.data?.find((userItem) => userItem.id === userId)
+    const selectedUser = usersQuery.data?.find(
+      (userItem) => userItem.id === userId
+    )
 
     if (selectedUser?.username === currentUser?.username) {
       setAdminActionError("The current admin account cannot be deleted here.")
@@ -339,6 +382,23 @@ export function App() {
         setLoginEmail={setLoginEmail}
         setLoginPassword={setLoginPassword}
         handleLogin={handleLogin}
+        setPage={setPage}
+      />
+    )
+  }
+
+  if (page === "register") {
+    return (
+      <RegisterPage
+        registerUsername={registerUsername}
+        registerEmail={registerEmail}
+        registerPassword={registerPassword}
+        registerError={registerError}
+        setRegisterUsername={setRegisterUsername}
+        setRegisterEmail={setRegisterEmail}
+        setRegisterPassword={setRegisterPassword}
+        handleRegister={handleRegister}
+        setPage={setPage}
       />
     )
   }
@@ -415,7 +475,9 @@ export function App() {
               <button
                 className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
                 onClick={() => createSecret.mutate()}
-                disabled={!currentUser || setupToken === null || createSecret.isPending}
+                disabled={
+                  !currentUser || setupToken === null || createSecret.isPending
+                }
               >
                 Create Secret
               </button>
