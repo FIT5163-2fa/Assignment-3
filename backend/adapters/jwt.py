@@ -49,7 +49,7 @@ def create_setup_token(user: User) -> str:
 
 def create_validate_token(user: User) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.JWT_SETUP_EXPIRE_MINUTES
+        minutes=settings.JWT_CHALLENGE_EXPIRE_MINUTES
     )
     payload = {
         "sub": str(user.id),

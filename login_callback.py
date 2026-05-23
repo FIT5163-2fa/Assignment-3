@@ -17,6 +17,7 @@ class LoginCallbackResult:
     user_id: int
     username: str
     role: str
+    access_token: str
 
 
 class LoginCallbackError(Exception):
@@ -70,6 +71,7 @@ def wait_for_login_callback(
                     user_id=int(data["user_id"]),
                     username=str(data["username"]),
                     role=str(data["role"]),
+                    access_token=str(data["access_token"]),
                 )
             except (KeyError, TypeError, ValueError):
                 self._send_json_response(400, {"detail": "Missing user details"})

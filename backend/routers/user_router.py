@@ -4,14 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.adapters.db import get_db
-from backend.adapters.game_service import get_games_by_user
 from backend.adapters.jwt import (
+    create_challenge_token,
     create_setup_token,
     create_validate_token,
     get_access_token_payload,
-    get_optional_token_payload,
 )
-from backend.adapters.models import Games, User, UserRole
+from backend.adapters.models import User, UserRole
 from backend.adapters.user_service import (
     authenticate_user,
     count_admin_users,
@@ -24,7 +23,6 @@ from backend.adapters.user_service import (
     remove_two_factor_secret,
     update_user_role,
 )
-from backend.schemas.game_schema import GameResponse
 from backend.schemas.user_schema import (
     AdminUserResponse,
     CreateUser,
@@ -36,10 +34,6 @@ from backend.schemas.user_schema import (
 )
 
 user_router = APIRouter(prefix="/users", tags=["Users"])
-
-
-def _split_moves(moves: str) -> list[str]:
-    return moves.split() if moves else []
 
 
 def _user_response(user: User) -> UserResponse:
@@ -60,27 +54,22 @@ def _admin_user_response(user: User) -> AdminUserResponse:
     )
 
 
-def _game_response(game: Games) -> GameResponse:
-    return GameResponse(
-        id=game.id,
-        user_id=game.user_id,
-        player_side=game.player_side,
-        ai_depth=game.ai_depth,
-        moves=_split_moves(game.moves),
-        status=game.status,
-        result=game.result,
-        created_at=game.created_at,
-        updated_at=game.updated_at,
-    )
-
-
 def _require_admin(payload: dict) -> None:
     if payload.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
 
 
-def _is_admin(payload: dict | None) -> bool:
-    return payload is not None and payload.get("role") == "admin"
+def _is_admin(payload: dict) -> bool:
+    return payload.get("role") == "admin"
+
+
+def _token_user_id(payload: dict) -> int:
+    return int(payload["sub"])
+
+
+def _require_admin_or_self(payload: dict, user_id: int) -> None:
+    if not _is_admin(payload) and _token_user_id(payload) != user_id:
+        raise HTTPException(status_code=403, detail="Cannot access another user")
 
 
 def _ensure_unique_user(db: Session, user: CreateUser) -> None:
@@ -132,28 +121,36 @@ def login_app_user(user: LoginUser, db: Session = Depends(get_db)) -> LoginRespo
         username=authenticated_user.username,
         two_factor_set=two_factor_set,
         setup_token=None if two_factor_set else create_setup_token(authenticated_user),
-        validate_token=create_validate_token(authenticated_user),
+        validate_token=create_validate_token(authenticated_user) if two_factor_set else None,
     )
 
 
 @user_router.get(
     "",
-    description="Returns all users. Admins receive sensitive user information.",
+    description="Returns users. Admins receive all users; users receive only themselves.",
+    responses={
+        404: {"description": "User not found"},
+    },
     response_model=list[Union[AdminUserResponse, UserResponse]],
 )
 def get_app_users(
     db: Session = Depends(get_db),
-    payload: dict | None = Depends(get_optional_token_payload),
+    payload: dict = Depends(get_access_token_payload),
 ) -> list[Union[AdminUserResponse, UserResponse]]:
     if _is_admin(payload):
         return [_admin_user_response(user) for user in get_all_users(db)]
-    return [_user_response(user) for user in get_all_users(db)]
+
+    user = get_user(db, _token_user_id(payload))
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return [_user_response(user)]
 
 
 @user_router.get(
     "/by_username/{username}",
     description="Returns a user by username. Admins receive sensitive user information.",
     responses={
+        403: {"description": "Cannot access another user"},
         404: {"description": "User not found"},
     },
     response_model=Union[AdminUserResponse, UserResponse, ErrorResponse],
@@ -161,39 +158,23 @@ def get_app_users(
 def get_app_user_by_username(
     username: str,
     db: Session = Depends(get_db),
-    payload: dict | None = Depends(get_optional_token_payload),
+    payload: dict = Depends(get_access_token_payload),
 ) -> Union[AdminUserResponse, UserResponse]:
     user = get_user_by_username(db, username)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
+    _require_admin_or_self(payload, user.id)
     if _is_admin(payload):
         return _admin_user_response(user)
     return _user_response(user)
 
 
 @user_router.get(
-    "/by_username/{username}/games",
-    description="Returns chess games for a username",
-    responses={
-        404: {"description": "User not found"},
-    },
-    response_model=Union[list[GameResponse], ErrorResponse],
-)
-def get_chess_games_by_username(
-    username: str, db: Session = Depends(get_db)
-) -> list[GameResponse]:
-    user = get_user_by_username(db, username)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return [_game_response(game) for game in get_games_by_user(db, user.id)]
-
-
-@user_router.get(
     "/{user_id}",
     description="Returns a user by user id. Admins receive sensitive user information.",
     responses={
+        403: {"description": "Cannot access another user"},
         404: {"description": "User not found"},
     },
     response_model=Union[AdminUserResponse, UserResponse, ErrorResponse],
@@ -201,12 +182,13 @@ def get_chess_games_by_username(
 def get_app_user(
     user_id: int,
     db: Session = Depends(get_db),
-    payload: dict | None = Depends(get_optional_token_payload),
+    payload: dict = Depends(get_access_token_payload),
 ) -> Union[AdminUserResponse, UserResponse]:
     user = get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
+    _require_admin_or_self(payload, user.id)
     if _is_admin(payload):
         return _admin_user_response(user)
     return _user_response(user)
@@ -266,24 +248,6 @@ def reset_app_user_two_factor(
         raise HTTPException(status_code=404, detail="User not found")
 
     return _user_response(user)
-
-
-@user_router.get(
-    "/{user_id}/games",
-    description="Returns chess games for a user id",
-    responses={
-        404: {"description": "User not found"},
-    },
-    response_model=Union[list[GameResponse], ErrorResponse],
-)
-def get_chess_games_by_user_id(
-    user_id: int, db: Session = Depends(get_db)
-) -> list[GameResponse]:
-    user = get_user(db, user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return [_game_response(game) for game in get_games_by_user(db, user_id)]
 
 
 @user_router.delete(

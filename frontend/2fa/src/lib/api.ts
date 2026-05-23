@@ -51,7 +51,8 @@ export type ValidateTwoFactorResponse = {
 export async function completeChessLoginCallback(
   callbackUrl: string,
   state: string,
-  user: UserResponse
+  user: UserResponse,
+  accessToken: string,
 ) {
   const response = await fetch(callbackUrl, {
     method: "POST",
@@ -61,6 +62,7 @@ export async function completeChessLoginCallback(
       user_id: user.id,
       username: user.username,
       role: user.role,
+      access_token: accessToken,
     }),
   })
 
