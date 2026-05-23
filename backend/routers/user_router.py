@@ -5,7 +5,11 @@ from sqlalchemy.orm import Session
 
 from backend.adapters.db import get_db
 from backend.adapters.game_service import get_games_by_user
-from backend.adapters.jwt import get_current_token_payload, get_optional_token_payload
+from backend.adapters.jwt import (
+    create_setup_token,
+    get_access_token_payload,
+    get_optional_token_payload,
+)
 from backend.adapters.models import Games, User
 from backend.adapters.user_service import (
     authenticate_user,
@@ -112,6 +116,7 @@ def login_app_user(user: LoginUser, db: Session = Depends(get_db)) -> LoginRespo
         user_id=authenticated_user.id,
         username=authenticated_user.username,
         two_factor_set=authenticated_user.two_factor_secret is not None,
+        setup_token=create_setup_token(authenticated_user),
     )
 
 
@@ -204,7 +209,7 @@ def update_app_user_role(
     user_id: int,
     user_role: UpdateUserRole,
     db: Session = Depends(get_db),
-    payload: dict = Depends(get_current_token_payload),
+    payload: dict = Depends(get_access_token_payload),
 ) -> UserResponse:
     _require_admin(payload)
     user = update_user_role(db, user_id, user_role.role)
@@ -243,7 +248,7 @@ def get_chess_games_by_user_id(
 def delete_app_user(
     user_id: int,
     db: Session = Depends(get_db),
-    payload: dict = Depends(get_current_token_payload),
+    payload: dict = Depends(get_access_token_payload),
 ) -> bool:
     token_user_id = int(payload["sub"])
     is_admin = payload.get("role") == "admin"

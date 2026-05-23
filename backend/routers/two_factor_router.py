@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.adapters.db import get_db
-from backend.adapters.jwt import create_access_token
+from backend.adapters.jwt import create_access_token, get_setup_token_payload
 from backend.adapters.user_service import (
     get_user,
     update_two_factor_secret,
@@ -89,12 +89,17 @@ def validate_2fa_key(
     "/create_key",
     description="Creates and returns a 2factor otpauth URI",
     responses={
+        401: {"description": "Invalid setup token"},
         404: {"description": "User not found"},
         409: {"description": "User already has a two factor secret"},
     },
     response_model=Union[CreateKeyResponse, ErrorResponse],
 )
-def create_key(user_id: int, db: Session = Depends(get_db)) -> CreateKeyResponse:
+def create_key(
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_setup_token_payload),
+) -> CreateKeyResponse:
+    user_id = int(payload["sub"])
     user = get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")

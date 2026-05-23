@@ -68,9 +68,12 @@ export async function getDebugAdminToken() {
 }
 
 // Create the TOTP setup URI for a selected user.
-export async function createTwoFactorKey(userId: number) {
-  const response = await fetch(`${API_BASE_URL}/create_key?user_id=${userId}`, {
+export async function createTwoFactorKey(setupToken: string) {
+  const response = await fetch(`${API_BASE_URL}/create_key`, {
     method: "POST",
+    headers: {
+      Authorization: `Bearer ${setupToken}`,
+    },
   })
 
   if (!response.ok) {

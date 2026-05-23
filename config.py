@@ -9,7 +9,8 @@ class Settings(BaseSettings):
     
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 60
+    JWT_ACCESS_EXPIRE_MINUTES: int = 60
+    JWT_SETUP_EXPIRE_MINUTES: int = 10
     
     TOTP_DURATION_SEC: int = 15
     TOTP_DIGITS: int = 6

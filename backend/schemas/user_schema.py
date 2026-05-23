@@ -22,6 +22,8 @@ class LoginResponse(BaseModel):
     user_id: int
     username: str
     two_factor_set: bool
+    setup_token: str
+    token_type: str = "bearer"
 
 
 class UpdateUserRole(BaseModel):
