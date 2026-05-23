@@ -1,28 +1,53 @@
-import type { Dispatch, SetStateAction, SyntheticEvent } from "react"
+import { useState, type SyntheticEvent } from "react"
+import { useNavigate } from "react-router"
+import { createUser } from "@/lib/api"
+import { getErrorMessage } from "@/lib/utils"
 
-type RegisterPageProps = {
-  registerUsername: string
-  registerEmail: string
-  registerPassword: string
-  registerError: string
-  setRegisterUsername: Dispatch<SetStateAction<string>>
-  setRegisterEmail: Dispatch<SetStateAction<string>>
-  setRegisterPassword: Dispatch<SetStateAction<string>>
-  handleRegister: (event: SyntheticEvent<HTMLFormElement>) => void
-  setPage: Dispatch<SetStateAction<string>>
-}
+export function RegisterPage() {
+  const navigate = useNavigate()
 
-export function RegisterPage({
-  registerUsername,
-  registerEmail,
-  registerPassword,
-  registerError,
-  setRegisterUsername,
-  setRegisterEmail,
-  setRegisterPassword,
-  handleRegister,
-  setPage,
-}: RegisterPageProps) {
+  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+
+  async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError("")
+
+    const trimmedUsername = username.trim()
+    const trimmedEmail = email.trim()
+
+    if (!trimmedUsername) {
+      setError("Username cannot be empty.")
+      return
+    }
+
+    if (!trimmedEmail) {
+      setError("Email cannot be empty.")
+      return
+    }
+
+    if (!password) {
+      setError("Password cannot be empty.")
+      return
+    }
+
+    try {
+      await createUser({
+        username: trimmedUsername,
+        email: trimmedEmail,
+        password,
+      })
+      setUsername("")
+      setEmail("")
+      setPassword("")
+      navigate("/login")
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
+  }
+
   return (
     <div className="flex min-h-svh min-w-svw items-center justify-center bg-zinc-950 p-6 text-white">
       <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-8 shadow-xl">
@@ -32,14 +57,14 @@ export function RegisterPage({
           Create a new account to get started with the 2FA Chess System.
         </p>
 
-        <form className="mt-6 flex flex-col gap-4" onSubmit={handleRegister}>
+        <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
           <div>
             <label className="text-sm font-medium">Username</label>
             <input
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
               type="text"
-              value={registerUsername}
-              onChange={(event) => setRegisterUsername(event.target.value)}
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
               placeholder="Choose a username"
             />
           </div>
@@ -49,8 +74,8 @@ export function RegisterPage({
             <input
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
               type="email"
-              value={registerEmail}
-              onChange={(event) => setRegisterEmail(event.target.value)}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               placeholder="you@example.com"
             />
           </div>
@@ -60,15 +85,15 @@ export function RegisterPage({
             <input
               className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white"
               type="password"
-              value={registerPassword}
-              onChange={(event) => setRegisterPassword(event.target.value)}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
               placeholder="Enter your password"
             />
           </div>
 
-          {registerError && (
+          {error && (
             <div className="rounded-lg bg-red-950 px-3 py-2 text-sm text-red-300">
-              {registerError}
+              {error}
             </div>
           )}
 
@@ -79,7 +104,7 @@ export function RegisterPage({
 
         <button
           className="mt-4 w-full rounded-lg bg-zinc-700 px-4 py-2 text-white hover:bg-zinc-600"
-          onClick={() => setPage("login")}
+          onClick={() => navigate("/login")}
         >
           Already have an account? Login
         </button>

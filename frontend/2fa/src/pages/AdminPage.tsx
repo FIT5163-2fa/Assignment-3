@@ -1,27 +1,15 @@
-import type { Dispatch, SetStateAction, SyntheticEvent } from "react"
-import type { AdminUserResponse, UserRole } from "@/lib/api"
-
-type AdminDashboardProps = {
-  users: AdminUserResponse[]
-  newUsername: string
-  newEmail: string
-  newPassword: string
-  newRole: UserRole
-  setNewUsername: Dispatch<SetStateAction<string>>
-  setNewEmail: Dispatch<SetStateAction<string>>
-  setNewPassword: Dispatch<SetStateAction<string>>
-  setNewRole: Dispatch<SetStateAction<UserRole>>
-  handleAddUser: (
-    event: SyntheticEvent<HTMLFormElement>
-  ) => void | Promise<void>
-  handleResetTwoFactor: (userId: number) => void | Promise<void>
-  handleUpdateRole: (userId: number, role: UserRole) => void | Promise<void>
-  handleDeleteUser: (userId: number) => void
-  handleLogout: () => void
-  isLoadingUsers: boolean
-  errorMessage?: string
-  actionError?: string
-}
+import { useState, type SyntheticEvent } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useAuth } from "@/context/AuthContext"
+import {
+  getAdminUsers,
+  createUser,
+  updateUserRole,
+  deleteUser,
+  resetUserTwoFactor,
+} from "@/lib/api"
+import type { UserRole, AdminUserResponse } from "@/lib/api"
+import { getErrorMessage } from "@/lib/utils"
 
 function formatHashedEmail(hashedEmail: string) {
   if (!hashedEmail) return "Not loaded"
@@ -29,31 +17,119 @@ function formatHashedEmail(hashedEmail: string) {
   return `${hashedEmail.slice(0, 4)}....${hashedEmail.slice(-4)}`
 }
 
-// I moved the admin UI into its own component so App.tsx is easier to read.
-// The user data and functions are still passed from App.tsx because the main
-// application state is stored there.
-export function AdminDashboard({
-  users,
-  newUsername,
-  newEmail,
-  newPassword,
-  newRole,
-  setNewUsername,
-  setNewEmail,
-  setNewPassword,
-  setNewRole,
-  handleAddUser,
-  handleResetTwoFactor,
-  handleUpdateRole,
-  handleDeleteUser,
-  handleLogout,
-  isLoadingUsers,
-  errorMessage,
-  actionError,
-}: AdminDashboardProps) {
-  const adminCount = users.filter(
-    (userItem) => userItem.role === "admin"
-  ).length
+export function AdminPage() {
+  const { currentUser, accessToken, logout } = useAuth()
+  const queryClient = useQueryClient()
+
+  const [newUsername, setNewUsername] = useState("")
+  const [newEmail, setNewEmail] = useState("")
+  const [newPassword, setNewPassword] = useState("password123")
+  const [newRole, setNewRole] = useState<UserRole>("user")
+  const [adminActionError, setAdminActionError] = useState("")
+
+  const usersQuery = useQuery({
+    queryKey: ["admin-users", accessToken],
+    queryFn: () => {
+      if (!accessToken) throw new Error("No access token")
+      return getAdminUsers(accessToken)
+    },
+    enabled: accessToken !== null,
+  })
+
+  function refreshAdminUsers() {
+    return queryClient.invalidateQueries({ queryKey: ["admin-users"] })
+  }
+
+  async function handleAddUser(event: SyntheticEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setAdminActionError("")
+
+    const trimmedUsername = newUsername.trim()
+    const trimmedEmail = newEmail.trim()
+
+    if (!trimmedUsername) {
+      alert("Username cannot be empty.")
+      return
+    }
+
+    if (!trimmedEmail) {
+      alert("Email cannot be empty.")
+      return
+    }
+
+    if (!accessToken) {
+      alert("Admin token is missing. Please log in again.")
+      return
+    }
+
+    try {
+      const createdUser = await createUser({
+        username: trimmedUsername,
+        email: trimmedEmail,
+        password: newPassword,
+      })
+
+      if (newRole !== createdUser.role) {
+        await updateUserRole(createdUser.id, newRole, accessToken)
+      }
+
+      setNewUsername("")
+      setNewEmail("")
+      setNewPassword("password123")
+      setNewRole("user")
+      await refreshAdminUsers()
+    } catch (error) {
+      setAdminActionError(getErrorMessage(error))
+    }
+  }
+
+  async function handleResetTwoFactor(userId: number) {
+    if (!accessToken) return
+    setAdminActionError("")
+
+    try {
+      await resetUserTwoFactor(userId, accessToken)
+      await refreshAdminUsers()
+    } catch (error) {
+      setAdminActionError(getErrorMessage(error))
+    }
+  }
+
+  async function handleUpdateRole(userId: number, role: UserRole) {
+    if (!accessToken) return
+    setAdminActionError("")
+
+    try {
+      await updateUserRole(userId, role, accessToken)
+      await refreshAdminUsers()
+    } catch (error) {
+      setAdminActionError(getErrorMessage(error))
+    }
+  }
+
+  async function handleDeleteUser(userId: number) {
+    if (!accessToken) return
+    setAdminActionError("")
+    const users = usersQuery.data
+    const selectedUser = users?.find(
+      (userItem) => userItem.id === userId,
+    )
+
+    if (selectedUser?.username === currentUser?.username) {
+      setAdminActionError("The current admin account cannot be deleted here.")
+      return
+    }
+
+    try {
+      await deleteUser(userId, accessToken)
+      await refreshAdminUsers()
+    } catch (error) {
+      setAdminActionError(getErrorMessage(error))
+    }
+  }
+
+  const users: AdminUserResponse[] = usersQuery.data ?? []
+  const adminCount = users.filter((u) => u.role === "admin").length
 
   return (
     <div className="min-h-svh min-w-svw bg-zinc-950 p-8 text-white">
@@ -68,7 +144,7 @@ export function AdminDashboard({
 
           <button
             className="rounded-lg bg-zinc-700 px-4 py-2 text-white"
-            onClick={handleLogout}
+            onClick={logout}
           >
             Logout
           </button>
@@ -119,9 +195,9 @@ export function AdminDashboard({
           </button>
         </form>
 
-        {actionError && (
+        {adminActionError && (
           <div className="mt-4 rounded-xl border border-red-900/60 bg-red-950/50 px-4 py-3 text-sm text-red-200">
-            {actionError}
+            {adminActionError}
           </div>
         )}
 
@@ -138,7 +214,7 @@ export function AdminDashboard({
             </thead>
 
             <tbody>
-              {isLoadingUsers && (
+              {usersQuery.isLoading && (
                 <tr>
                   <td
                     className="px-4 py-6 text-center text-zinc-400"
@@ -149,13 +225,13 @@ export function AdminDashboard({
                 </tr>
               )}
 
-              {!isLoadingUsers && errorMessage && (
+              {!usersQuery.isLoading && usersQuery.error && (
                 <tr>
                   <td
                     className="px-4 py-6 text-center text-red-400"
                     colSpan={5}
                   >
-                    {errorMessage}
+                    {usersQuery.error.message}
                   </td>
                 </tr>
               )}
@@ -179,7 +255,7 @@ export function AdminDashboard({
                       onChange={(event) =>
                         handleUpdateRole(
                           userItem.id,
-                          event.target.value as UserRole
+                          event.target.value as UserRole,
                         )
                       }
                     >
@@ -218,10 +294,9 @@ export function AdminDashboard({
           </table>
         </div>
 
-        {/* Short note to explain how the admin controls affect the login flow. */}
         <div className="mt-6 rounded-xl bg-zinc-900 p-4 text-sm text-zinc-400">
           The admin page is used to manage users and their 2FA setup status.
-          Resetting 2FA clears the user's secret so they can enroll again.
+          Resetting 2FA clears the user&apos;s secret so they can enroll again.
         </div>
       </div>
     </div>
