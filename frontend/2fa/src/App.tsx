@@ -84,7 +84,7 @@ export function App() {
   const [newRole, setNewRole] = useState<UserRole>("user")
   const [adminActionError, setAdminActionError] = useState("")
 
-  const adminUsersQuery = useQuery({
+  const usersQuery = useQuery({
     queryKey: ["admin-users", accessToken],
     queryFn: () => {
       if (!accessToken) throw new Error("No access token")
@@ -209,6 +209,7 @@ export function App() {
     setPage("login")
   }
 
+  // Adds a new user in the admin dashboard.
   async function handleAddUser(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault()
     setAdminActionError("")
@@ -276,10 +277,12 @@ export function App() {
     }
   }
 
+  // Deletes a user from the admin table.
+  // The last admin account is protected from being deleted.
   async function handleDeleteUser(userId: number) {
     if (!accessToken) return
     setAdminActionError("")
-    const selectedUser = adminUsersQuery.data?.find((userItem) => userItem.id === userId)
+    const selectedUser = usersQuery.data?.find((userItem) => userItem.id === userId)
 
     if (selectedUser?.username === currentUser?.username) {
       setAdminActionError("The current admin account cannot be deleted here.")
@@ -467,7 +470,7 @@ export function App() {
   if (page === "admin") {
     return (
       <AdminDashboard
-        users={adminUsersQuery.data ?? []}
+        users={usersQuery.data ?? []}
         newUsername={newUsername}
         newEmail={newEmail}
         newPassword={newPassword}
@@ -481,8 +484,8 @@ export function App() {
         handleUpdateRole={handleUpdateRole}
         handleDeleteUser={handleDeleteUser}
         handleLogout={handleLogout}
-        isLoadingUsers={adminUsersQuery.isLoading}
-        errorMessage={adminUsersQuery.error?.message}
+        isLoadingUsers={usersQuery.isLoading}
+        errorMessage={usersQuery.error?.message}
         actionError={adminActionError}
       />
     )
