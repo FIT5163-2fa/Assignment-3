@@ -2,6 +2,7 @@ import {
   createDebugUser,
   createTwoFactorKey,
   getDebugTotpCode,
+  resetUserTwoFactor,
   validateTwoFactorCode,
 } from "./lib/api"
 
@@ -29,7 +30,7 @@ type DemoUser = {
   email: string
   password: string
   role: UserRole
-  keygenEnabled: boolean
+  twoFactorSet: boolean
 }
 
 const demoUsers: DemoUser[] = [
@@ -39,7 +40,7 @@ const demoUsers: DemoUser[] = [
     email: "admin@example.com",
     password: "admin123",
     role: "admin",
-    keygenEnabled: true,
+    twoFactorSet: true,
   },
   {
     id: 2,
@@ -47,7 +48,7 @@ const demoUsers: DemoUser[] = [
     email: "user@example.com",
     password: "user1234",
     role: "user",
-    keygenEnabled: true,
+    twoFactorSet: true,
   },
 ]
 
@@ -144,8 +145,7 @@ export function App() {
     })
 
   // Handles the first login step before 2FA.
-  // The user can continue only if the password is correct
-  // and the keygen account is enabled.
+  // The user can continue only if the password is correct and 2FA is set.
   function handleLogin(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoginError("")
@@ -161,8 +161,8 @@ export function App() {
       return
     }
 
-    if (!matchedUser.keygenEnabled) {
-      setLoginError("This user's 2FA keygen account is disabled.")
+    if (!matchedUser.twoFactorSet) {
+      setLoginError("This user needs to set up 2FA before verification.")
       return
     }
 
@@ -214,7 +214,7 @@ export function App() {
       email: newEmail.trim() || `${trimmedUsername}@example.com`,
       password: newPassword,
       role: newRole,
-      keygenEnabled: true,
+      twoFactorSet: true,
     }
 
     setUsers([...users, nextUser])
@@ -224,21 +224,16 @@ export function App() {
     setNewRole("user")
   }
 
-  // Enables or disables a user's keygen account.
-  // Disabled users are blocked from entering the 2FA step.
-  function handleToggleKeygen(userId: number) {
-    const updatedUsers = users.map((userItem) => {
-      if (userItem.id === userId) {
-        return {
-          ...userItem,
-          keygenEnabled: !userItem.keygenEnabled,
-        }
-      }
+  async function handleResetTwoFactor(userId: number) {
+    if (accessToken) {
+      await resetUserTwoFactor(userId, accessToken)
+    }
 
-      return userItem
-    })
-
-    setUsers(updatedUsers)
+    setUsers((previousUsers) =>
+      previousUsers.map((userItem) =>
+        userItem.id === userId ? { ...userItem, twoFactorSet: false } : userItem,
+      ),
+    )
   }
 
   // Deletes a user from the admin table.
@@ -438,7 +433,7 @@ export function App() {
         setNewPassword={setNewPassword}
         setNewRole={setNewRole}
         handleAddUser={handleAddUser}
-        handleToggleKeygen={handleToggleKeygen}
+        handleResetTwoFactor={handleResetTwoFactor}
         handleDeleteUser={handleDeleteUser}
         handleLogout={handleLogout}
       />

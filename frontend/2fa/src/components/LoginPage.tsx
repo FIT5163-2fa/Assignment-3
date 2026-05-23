@@ -26,8 +26,8 @@ export function LoginPage({
         <h1 className="text-2xl font-bold">Login to 2FA Chess System</h1>
 
         <p className="mt-2 text-sm text-zinc-400">
-          Please sign in with your account first. If the password is correct and the keygen account is enabled,
-          you will continue to the 2FA verification step.
+          Please sign in with your account first. If the password is correct and
+          2FA is set, you will continue to the verification step.
         </p>
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={handleLogin}>

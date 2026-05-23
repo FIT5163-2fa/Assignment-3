@@ -77,6 +77,21 @@ export async function createDebugUser(user: CreateUserRequest) {
   return (await response.json()) as UserResponse
 }
 
+export async function resetUserTwoFactor(userId: number, accessToken: string) {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}/2fa`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response))
+  }
+
+  return (await response.json()) as UserResponse
+}
+
 export async function getDebugTotpCode(userId: number) {
   const response = await fetch(`${API_BASE_URL}/DEBUG_get_2fa_key?user_id=${userId}`)
 

@@ -18,6 +18,7 @@ from backend.adapters.user_service import (
     get_all_users,
     get_user,
     get_user_by_username,
+    remove_two_factor_secret,
     update_user_role,
 )
 from backend.schemas.game_schema import GameResponse
@@ -214,6 +215,28 @@ def update_app_user_role(
 ) -> UserResponse:
     _require_admin(payload)
     user = update_user_role(db, user_id, user_role.role)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return _user_response(user)
+
+
+@user_router.delete(
+    "/{user_id}/2fa",
+    description="Resets a user's 2FA secret. Admin only.",
+    responses={
+        403: {"description": "Admin access required"},
+        404: {"description": "User not found"},
+    },
+    response_model=Union[UserResponse, ErrorResponse],
+)
+def reset_app_user_two_factor(
+    user_id: int,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(get_access_token_payload),
+) -> UserResponse:
+    _require_admin(payload)
+    user = remove_two_factor_secret(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 

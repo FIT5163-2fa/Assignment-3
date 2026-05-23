@@ -8,7 +8,7 @@ type DemoUser = {
   email: string
   password: string
   role: UserRole
-  keygenEnabled: boolean
+  twoFactorSet: boolean
 }
 
 type AdminDashboardProps = {
@@ -22,7 +22,7 @@ type AdminDashboardProps = {
   setNewPassword: Dispatch<SetStateAction<string>>
   setNewRole: Dispatch<SetStateAction<UserRole>>
   handleAddUser: (event: SyntheticEvent<HTMLFormElement>) => void
-  handleToggleKeygen: (userId: number) => void
+  handleResetTwoFactor: (userId: number) => void | Promise<void>
   handleDeleteUser: (userId: number) => void
   handleLogout: () => void
 }
@@ -41,7 +41,7 @@ export function AdminDashboard({
   setNewPassword,
   setNewRole,
   handleAddUser,
-  handleToggleKeygen,
+  handleResetTwoFactor,
   handleDeleteUser,
   handleLogout,
 }: AdminDashboardProps) {
@@ -52,7 +52,7 @@ export function AdminDashboard({
           <div>
             <h1 className="text-2xl font-bold">Admin Dashboard</h1>
             <p className="mt-1 text-sm text-zinc-400">
-              Manage users and their keygen account status.
+              Manage users and their 2FA setup status.
             </p>
           </div>
 
@@ -113,7 +113,7 @@ export function AdminDashboard({
               <tr>
                 <th className="px-4 py-3">Username</th>
                 <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Keygen Status</th>
+                <th className="px-4 py-3">2FA Status</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
@@ -124,14 +124,15 @@ export function AdminDashboard({
                   <td className="px-4 py-3">{userItem.username}</td>
                   <td className="px-4 py-3">{userItem.role}</td>
                   <td className="px-4 py-3">
-                    {userItem.keygenEnabled ? "Enabled" : "Disabled"}
+                    {userItem.twoFactorSet ? "Set" : "Not set"}
                   </td>
                   <td className="flex gap-2 px-4 py-3">
                     <button
                       className="rounded-lg bg-emerald-600 px-3 py-1 text-white"
-                      onClick={() => handleToggleKeygen(userItem.id)}
+                      onClick={() => handleResetTwoFactor(userItem.id)}
+                      disabled={!userItem.twoFactorSet}
                     >
-                      {userItem.keygenEnabled ? "Disable" : "Enable"}
+                      Reset 2FA
                     </button>
 
                     <button
@@ -149,9 +150,8 @@ export function AdminDashboard({
 
         {/* Short note to explain how the admin controls affect the login flow. */}
         <div className="mt-6 rounded-xl bg-zinc-900 p-4 text-sm text-zinc-400">
-          The admin page is used to manage users and their keygen account
-          status. If a keygen account is disabled, that user cannot continue to
-          the 2FA verification step.
+          The admin page is used to manage users and their 2FA setup status.
+          Resetting 2FA clears the user's secret so they can enroll again.
         </div>
       </div>
     </div>
