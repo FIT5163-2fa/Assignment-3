@@ -7,6 +7,7 @@ from backend.adapters.db import get_db
 from backend.adapters.game_service import get_games_by_user
 from backend.adapters.jwt import (
     create_setup_token,
+    create_validate_token,
     get_access_token_payload,
     get_optional_token_payload,
 )
@@ -131,6 +132,7 @@ def login_app_user(user: LoginUser, db: Session = Depends(get_db)) -> LoginRespo
         username=authenticated_user.username,
         two_factor_set=two_factor_set,
         setup_token=None if two_factor_set else create_setup_token(authenticated_user),
+        validate_token=create_validate_token(authenticated_user),
     )
 
 

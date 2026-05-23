@@ -12,6 +12,7 @@ settings = get_settings()
 
 ACCESS_PURPOSE = "access"
 SETUP_PURPOSE = "2fa_setup"
+VALIDATE_PURPOSE = "2fa_validate"
 
 
 def create_access_token(user: User) -> str:
@@ -46,6 +47,21 @@ def create_setup_token(user: User) -> str:
     )
 
 
+def create_validate_token(user: User) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.JWT_SETUP_EXPIRE_MINUTES
+    )
+    payload = {
+        "sub": str(user.id),
+        "username": user.username,
+        "purpose": VALIDATE_PURPOSE,
+        "exp": expire,
+    }
+    return jwt.encode(
+        payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+    )
+
+
 def decode_access_token(token: str) -> dict:
     try:
         return jwt.decode(
@@ -73,6 +89,13 @@ def get_setup_token_payload(
 ) -> dict:
     payload = decode_access_token(credentials.credentials)
     return _require_token_purpose(payload, SETUP_PURPOSE)
+
+
+def get_validate_token_payload(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+) -> dict:
+    payload = decode_access_token(credentials.credentials)
+    return _require_token_purpose(payload, VALIDATE_PURPOSE)
 
 
 def get_optional_token_payload(

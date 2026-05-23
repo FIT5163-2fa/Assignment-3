@@ -1,48 +1,50 @@
 import { useState } from "react"
 import { useMutation } from "@tanstack/react-query"
-import { QRCodeSVG } from "qrcode.react"
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
 import { useAuth } from "@/context/AuthContext"
-import { createTwoFactorKey, getDebugTotpCode } from "@/lib/api"
+import { generateTotp } from "@/lib/api"
 import { getErrorMessage } from "@/lib/utils"
 
+function base32Decode(base32: string): ArrayBuffer {
+  const cleaned = base32.replace(/[=]+$/, "").toUpperCase()
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+  let bits = 0
+  let value = 0
+  const bytes: number[] = []
+
+  for (const char of cleaned) {
+    const idx = chars.indexOf(char)
+    if (idx === -1) throw new Error(`Invalid base32 character: ${char}`)
+    value = (value << 5) | idx
+    bits += 5
+    if (bits >= 8) {
+      bits -= 8
+      bytes.push((value >> bits) & 0xff)
+    }
+  }
+
+  return new Uint8Array(bytes).buffer
+}
+
 export function TwoFactorPage() {
-  const { currentUser, setupToken, completeTwoFactor, logout } = useAuth()
+  const { currentUser, twoFactorSecret, completeTwoFactor, logout } = useAuth()
 
   const [totp, setTotp] = useState("")
-  const [secret, setSecret] = useState<string | null>(null)
-  const [totpUri, setTotpUri] = useState<string | null>(null)
+  const [manualSecret, setManualSecret] = useState("")
   const [totpValid, setTotpValid] = useState<boolean | null>(null)
   const [validationError, setValidationError] = useState("")
 
-  const createSecret = useMutation({
-    mutationFn: () => {
-      if (currentUser === null) throw new Error("No current user")
-      if (currentUser.twoFactorSet) {
-        throw new Error("This user already has 2FA set.")
-      }
-      if (setupToken === null) {
-        throw new Error("Missing 2FA setup token. Please log in again.")
-      }
-      return createTwoFactorKey(setupToken)
-    },
-    onSuccess: (uri) => {
-      setTotpUri(uri)
-      const parsedUri = uri.replace("otpauth://", "https://")
-      const parsedUrl = new URL(parsedUri)
-      const secretParam = parsedUrl.searchParams.get("secret")
-      if (secretParam) setSecret(secretParam)
-    },
-  })
+  const activeSecret = twoFactorSecret || manualSecret
 
   const generateCode = useMutation({
     mutationFn: async () => {
-      if (currentUser === null) throw new Error("No current user")
-      return getDebugTotpCode(currentUser.id)
+      if (!activeSecret) throw new Error("No secret available. Enter your 2FA secret below.")
+      const secretBuffer = base32Decode(activeSecret)
+      return generateTotp(secretBuffer)
     },
     onSuccess: (code) => {
       setTotp(code)
@@ -76,79 +78,24 @@ export function TwoFactorPage() {
           ({currentUser?.role})
         </p>
 
-        {!currentUser?.twoFactorSet && (
-          <div className="mt-6 rounded-xl border border-zinc-800 p-4">
-            <h2 className="font-semibold">2FA Setup Required</h2>
+        {currentUser?.twoFactorSet ? (
+          <div className="mt-4 rounded-xl border border-zinc-800 p-4">
+            <h2 className="font-semibold">2FA Enabled</h2>
             <p className="mt-1 text-sm text-zinc-400">
-              Password accepted. This account needs a 2FA secret before
-              verification.
+              Enter a current code from your 2FA app.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-xl border border-zinc-800 p-4">
+            <h2 className="font-semibold">2FA Not Yet Set Up</h2>
+            <p className="mt-1 text-sm text-zinc-400">
+              If you have your secret from setup, enter it below to generate a code. Otherwise, go back and complete setup first.
             </p>
           </div>
         )}
 
         <div className="mt-4 rounded-xl border border-zinc-800 p-4">
-          <h2 className="font-semibold">Current User Details</h2>
-          <dl className="mt-3 grid grid-cols-[120px_1fr] gap-2 text-sm">
-            <dt className="text-zinc-400">User ID</dt>
-            <dd>{currentUser?.id}</dd>
-            <dt className="text-zinc-400">Username</dt>
-            <dd>{currentUser?.username}</dd>
-            <dt className="text-zinc-400">Email</dt>
-            <dd>{currentUser?.email}</dd>
-            <dt className="text-zinc-400">2FA Set</dt>
-            <dd>{currentUser?.twoFactorSet ? "Yes" : "No"}</dd>
-          </dl>
-        </div>
-
-        {!currentUser?.twoFactorSet && (
-          <div className="mt-4 rounded-xl border border-zinc-800 p-4">
-            <h2 className="font-semibold">Step 2: Create 2FA secret</h2>
-            <button
-              className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-              onClick={() => createSecret.mutate()}
-              disabled={
-                !currentUser || setupToken === null || createSecret.isPending
-              }
-            >
-              Create Secret
-            </button>
-
-            {secret && totpUri && (
-              <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-start">
-                <div className="rounded-lg bg-white p-3">
-                  <QRCodeSVG value={totpUri} size={144} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-zinc-200">
-                    Scan QR code or enter secret manually
-                  </div>
-                  <div className="mt-2 font-mono text-xs break-all text-zinc-400">
-                    Secret: {secret}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {createSecret.error && (
-              <div className="mt-2 text-sm text-red-400">
-                {createSecret.error.message}
-              </div>
-            )}
-          </div>
-        )}
-
-        {currentUser?.twoFactorSet && (
-          <div className="mt-4 rounded-xl border border-zinc-800 p-4">
-            <h2 className="font-semibold">Step 2: 2FA already set</h2>
-            <p className="mt-1 text-sm text-zinc-400">
-              Continue by entering a current code from your 2FA app.
-            </p>
-          </div>
-        )}
-
-        <div className="mt-4 rounded-xl border border-zinc-800 p-4">
-          <h2 className="font-semibold">Step 3: Enter TOTP code</h2>
+          <h2 className="font-semibold">Enter TOTP Code</h2>
           <p className="mt-1 text-sm text-zinc-400">
             The demo TOTP code is generated using HMAC-SHA256 and refreshes
             every 15 seconds.
@@ -174,11 +121,26 @@ export function TwoFactorPage() {
             </InputOTP>
           </div>
 
+          {!twoFactorSecret && (
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-zinc-300">
+                Enter Secret
+              </label>
+              <input
+                type="text"
+                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none"
+                placeholder="Paste your base32 secret here"
+                value={manualSecret}
+                onChange={(e) => setManualSecret(e.target.value)}
+              />
+            </div>
+          )}
+
           <div className="mt-4 flex justify-center gap-3">
             <button
               className="rounded-lg bg-green-600 px-4 py-2 text-white disabled:opacity-50"
               onClick={() => generateCode.mutate()}
-              disabled={!currentUser || generateCode.isPending}
+              disabled={!activeSecret || generateCode.isPending}
             >
               Generate Temporary Code
             </button>
