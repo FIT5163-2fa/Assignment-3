@@ -1,19 +1,8 @@
 import type { Dispatch, SetStateAction, SyntheticEvent } from "react"
-
-type UserRole = "admin" | "user"
-
-type DemoUser = {
-  id: number
-  username: string
-  email: string
-  hashedEmail?: string
-  password: string
-  role: UserRole
-  twoFactorSet: boolean
-}
+import type { AdminUserResponse, UserRole } from "../lib/api"
 
 type AdminDashboardProps = {
-  users: DemoUser[]
+  users: AdminUserResponse[]
   newUsername: string
   newEmail: string
   newPassword: string
@@ -22,13 +11,17 @@ type AdminDashboardProps = {
   setNewEmail: Dispatch<SetStateAction<string>>
   setNewPassword: Dispatch<SetStateAction<string>>
   setNewRole: Dispatch<SetStateAction<UserRole>>
-  handleAddUser: (event: SyntheticEvent<HTMLFormElement>) => void
+  handleAddUser: (event: SyntheticEvent<HTMLFormElement>) => void | Promise<void>
   handleResetTwoFactor: (userId: number) => void | Promise<void>
+  handleUpdateRole: (userId: number, role: UserRole) => void | Promise<void>
   handleDeleteUser: (userId: number) => void
   handleLogout: () => void
+  isLoadingUsers: boolean
+  errorMessage?: string
+  actionError?: string
 }
 
-function formatHashedEmail(hashedEmail?: string) {
+function formatHashedEmail(hashedEmail: string) {
   if (!hashedEmail) return "Not loaded"
   if (hashedEmail.length <= 8) return hashedEmail
   return `${hashedEmail.slice(0, 4)}....${hashedEmail.slice(-4)}`
@@ -49,9 +42,15 @@ export function AdminDashboard({
   setNewRole,
   handleAddUser,
   handleResetTwoFactor,
+  handleUpdateRole,
   handleDeleteUser,
   handleLogout,
+  isLoadingUsers,
+  errorMessage,
+  actionError,
 }: AdminDashboardProps) {
+  const adminCount = users.filter((userItem) => userItem.role === "admin").length
+
   return (
     <div className="min-h-svh min-w-svw bg-zinc-950 p-8 text-white">
       <div className="mx-auto max-w-5xl">
@@ -108,11 +107,19 @@ export function AdminDashboard({
 
           <button
             className="rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-            disabled={!newUsername.trim() || !newPassword.trim()}
+            disabled={
+              !newUsername.trim() || !newEmail.trim() || !newPassword.trim()
+            }
           >
             Add User
           </button>
         </form>
+
+        {actionError && (
+          <div className="mt-4 rounded-xl border border-red-900/60 bg-red-950/50 px-4 py-3 text-sm text-red-200">
+            {actionError}
+          </div>
+        )}
 
         <div className="mt-6 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
           <table className="w-full border-collapse text-left text-sm">
@@ -127,28 +134,70 @@ export function AdminDashboard({
             </thead>
 
             <tbody>
+              {isLoadingUsers && (
+                <tr>
+                  <td className="px-4 py-6 text-center text-zinc-400" colSpan={5}>
+                    Loading users...
+                  </td>
+                </tr>
+              )}
+
+              {!isLoadingUsers && errorMessage && (
+                <tr>
+                  <td className="px-4 py-6 text-center text-red-400" colSpan={5}>
+                    {errorMessage}
+                  </td>
+                </tr>
+              )}
+
               {users.map((userItem) => (
                 <tr key={userItem.id} className="border-t border-zinc-800">
                   <td className="px-4 py-3">{userItem.username}</td>
                   <td className="px-4 py-3 font-mono text-xs text-zinc-400">
-                    {formatHashedEmail(userItem.hashedEmail)}
+                    {formatHashedEmail(userItem.hashed_email)}
                   </td>
-                  <td className="px-4 py-3">{userItem.role}</td>
                   <td className="px-4 py-3">
-                    {userItem.twoFactorSet ? "Set" : "Not set"}
+                    <select
+                      className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1"
+                      value={userItem.role}
+                      disabled={userItem.role === "admin" && adminCount <= 1}
+                      title={
+                        userItem.role === "admin" && adminCount <= 1
+                          ? "Cannot demote the last admin"
+                          : undefined
+                      }
+                      onChange={(event) =>
+                        handleUpdateRole(
+                          userItem.id,
+                          event.target.value as UserRole,
+                        )
+                      }
+                    >
+                      <option value="user">user</option>
+                      <option value="admin">admin</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-3">
+                    {userItem.two_factor_set ? "Set" : "Not set"}
                   </td>
                   <td className="flex gap-2 px-4 py-3">
                     <button
                       className="rounded-lg bg-emerald-600 px-3 py-1 text-white"
                       onClick={() => handleResetTwoFactor(userItem.id)}
-                      disabled={!userItem.twoFactorSet}
+                      disabled={!userItem.two_factor_set}
                     >
                       Reset 2FA
                     </button>
 
                     <button
-                      className="rounded-lg bg-red-600 px-3 py-1 text-white"
+                      className="rounded-lg bg-red-600 px-3 py-1 text-white disabled:opacity-50"
                       onClick={() => handleDeleteUser(userItem.id)}
+                      disabled={userItem.role === "admin" && adminCount <= 1}
+                      title={
+                        userItem.role === "admin" && adminCount <= 1
+                          ? "Cannot delete the last admin"
+                          : undefined
+                      }
                     >
                       Delete
                     </button>

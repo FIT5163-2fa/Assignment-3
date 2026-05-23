@@ -1,10 +1,15 @@
 import {
   createDebugUser,
+  createUser,
+  deleteUser,
   createTwoFactorKey,
+  getAdminUsers,
   getDebugTotpCode,
   resetUserTwoFactor,
+  updateUserRole,
   validateTwoFactorCode,
 } from "./lib/api"
+import type { UserRole } from "./lib/api"
 
 import { LoginPage } from "./components/LoginPage"
 import { AdminDashboard } from "./components/AdminDashboard"
@@ -16,13 +21,11 @@ import {
 
 import { useState } from "react"
 import type { SyntheticEvent } from "react"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
 
 
 type Page = "login" | "twoFactor" | "admin" | "chess"
-
-type UserRole = "admin" | "user"
 
 type DemoUser = {
   id: number
@@ -57,6 +60,8 @@ const demoUsers: DemoUser[] = [
 
 
 export function App() {
+  const queryClient = useQueryClient()
+
   const [page, setPage] = useState<Page>("login")
 
   const [loginUsername, setLoginUsername] = useState("admin")
@@ -77,6 +82,20 @@ export function App() {
   const [newEmail, setNewEmail] = useState("")
   const [newPassword, setNewPassword] = useState("password123")
   const [newRole, setNewRole] = useState<UserRole>("user")
+  const [adminActionError, setAdminActionError] = useState("")
+
+  const adminUsersQuery = useQuery({
+    queryKey: ["admin-users", accessToken],
+    queryFn: () => {
+      if (!accessToken) throw new Error("No access token")
+      return getAdminUsers(accessToken)
+    },
+    enabled: page === "admin" && accessToken !== null,
+  })
+
+  function refreshAdminUsers() {
+    return queryClient.invalidateQueries({ queryKey: ["admin-users"] })
+  }
 
   const validateTotp = useMutation({
     mutationFn: () => {
@@ -190,67 +209,89 @@ export function App() {
     setPage("login")
   }
 
-  // Adds a new user in the admin dashboard.
-  // The user is stored in frontend state for the current demo.
-  function handleAddUser(event: SyntheticEvent<HTMLFormElement>) {
+  async function handleAddUser(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault()
+    setAdminActionError("")
 
     const trimmedUsername = newUsername.trim()
+    const trimmedEmail = newEmail.trim()
 
     if (!trimmedUsername) {
       alert("Username cannot be empty.")
       return
     }
 
-    const usernameAlreadyExists = users.some(
-      (userItem) =>
-        userItem.username.toLowerCase() === trimmedUsername.toLowerCase()
-    )
-    if (usernameAlreadyExists) {
-      alert("This username already exists.")
+    if (!trimmedEmail) {
+      alert("Email cannot be empty.")
       return
     }
 
-    const nextUser: DemoUser = {
-      id: Date.now(),
-      username: trimmedUsername,
-      email: newEmail.trim() || `${trimmedUsername}@example.com`,
-      password: newPassword,
-      role: newRole,
-      twoFactorSet: true,
+    if (!accessToken) {
+      alert("Admin token is missing. Please log in again.")
+      return
     }
 
-    setUsers([...users, nextUser])
-    setNewUsername("")
-    setNewEmail("")
-    setNewPassword("password123")
-    setNewRole("user")
+    try {
+      const createdUser = await createUser({
+        username: trimmedUsername,
+        email: trimmedEmail,
+        password: newPassword,
+      })
+
+      if (newRole !== createdUser.role) {
+        await updateUserRole(createdUser.id, newRole, accessToken)
+      }
+
+      setNewUsername("")
+      setNewEmail("")
+      setNewPassword("password123")
+      setNewRole("user")
+      await refreshAdminUsers()
+    } catch (error) {
+      setAdminActionError(getErrorMessage(error))
+    }
   }
 
   async function handleResetTwoFactor(userId: number) {
-    if (accessToken) {
-      await resetUserTwoFactor(userId, accessToken)
-    }
+    if (!accessToken) return
+    setAdminActionError("")
 
-    setUsers((previousUsers) =>
-      previousUsers.map((userItem) =>
-        userItem.id === userId ? { ...userItem, twoFactorSet: false } : userItem,
-      ),
-    )
+    try {
+      await resetUserTwoFactor(userId, accessToken)
+      await refreshAdminUsers()
+    } catch (error) {
+      setAdminActionError(getErrorMessage(error))
+    }
   }
 
-  // Deletes a user from the admin table.
-  // The current admin account is protected from being deleted.
-  function handleDeleteUser(userId: number) {
-    const selectedUser = users.find((userItem) => userItem.id === userId)
+  async function handleUpdateRole(userId: number, role: UserRole) {
+    if (!accessToken) return
+    setAdminActionError("")
+
+    try {
+      await updateUserRole(userId, role, accessToken)
+      await refreshAdminUsers()
+    } catch (error) {
+      setAdminActionError(getErrorMessage(error))
+    }
+  }
+
+  async function handleDeleteUser(userId: number) {
+    if (!accessToken) return
+    setAdminActionError("")
+    const selectedUser = adminUsersQuery.data?.find((userItem) => userItem.id === userId)
 
     if (selectedUser?.username === currentUser?.username) {
-      alert("The current admin account cannot be deleted.")
+      setAdminActionError("The current admin account cannot be deleted here.")
       return
     }
 
-    const updatedUsers = users.filter((userItem) => userItem.id !== userId)
-    setUsers(updatedUsers)
+    try {
+      await deleteUser(userId, accessToken)
+      await refreshAdminUsers()
+    } catch (error) {
+      setAdminActionError(getErrorMessage(error))
+    }
   }
 
   // Render the login page first. If the login is successful, App.tsx changes
@@ -426,7 +467,7 @@ export function App() {
   if (page === "admin") {
     return (
       <AdminDashboard
-        users={users}
+        users={adminUsersQuery.data ?? []}
         newUsername={newUsername}
         newEmail={newEmail}
         newPassword={newPassword}
@@ -437,8 +478,12 @@ export function App() {
         setNewRole={setNewRole}
         handleAddUser={handleAddUser}
         handleResetTwoFactor={handleResetTwoFactor}
+        handleUpdateRole={handleUpdateRole}
         handleDeleteUser={handleDeleteUser}
         handleLogout={handleLogout}
+        isLoadingUsers={adminUsersQuery.isLoading}
+        errorMessage={adminUsersQuery.error?.message}
+        actionError={adminActionError}
       />
     )
   }
@@ -461,6 +506,11 @@ export function App() {
       </div>
     </div>
   )
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message
+  return "Request failed"
 }
 
 export default App

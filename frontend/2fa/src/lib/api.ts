@@ -21,6 +21,11 @@ export type UserResponse = {
   role: UserRole
 }
 
+export type AdminUserResponse = UserResponse & {
+  hashed_email: string
+  two_factor_set: boolean
+}
+
 export type CreateUserRequest = {
   username: string
   email: string
@@ -61,6 +66,56 @@ export async function createUser(user: CreateUserRequest) {
   }
 
   return (await response.json()) as UserResponse
+}
+
+export async function getAdminUsers(accessToken: string) {
+  const response = await fetch(`${API_BASE_URL}/users`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response))
+  }
+
+  return (await response.json()) as AdminUserResponse[]
+}
+
+export async function updateUserRole(
+  userId: number,
+  role: UserRole,
+  accessToken: string,
+) {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}/role`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ role }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response))
+  }
+
+  return (await response.json()) as UserResponse
+}
+
+export async function deleteUser(userId: number, accessToken: string) {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response))
+  }
+
+  return (await response.json()) as boolean
 }
 
 export async function createDebugUser(user: CreateUserRequest) {
