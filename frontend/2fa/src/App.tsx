@@ -121,6 +121,7 @@ export function App() {
           id: response.user.id,
           username: response.user.username,
           role: response.user.role,
+          twoFactorSet: true,
         }
       })
 
@@ -181,10 +182,6 @@ export function App() {
     },
     onSuccess: (uri) => {
       setTotpUri(uri)
-      setCurrentUser((previousUser) => {
-        if (!previousUser) return previousUser
-        return { ...previousUser, twoFactorSet: true }
-      })
       const parsedUri = uri.replace("otpauth://", "https://")
       const parsedUrl = new URL(parsedUri)
       const secretParam = parsedUrl.searchParams.get("secret")
