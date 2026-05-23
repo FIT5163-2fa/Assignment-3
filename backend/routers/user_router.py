@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 
 from backend.adapters.db import get_db
 from backend.adapters.jwt import (
-    create_challenge_token,
     create_setup_token,
     create_validate_token,
     get_access_token_payload,
