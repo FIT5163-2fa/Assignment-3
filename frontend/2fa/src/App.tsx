@@ -1,4 +1,9 @@
-import { getDebugTotpCode } from "./lib/api"
+import {
+  createDebugUser,
+  createTwoFactorKey,
+  getDebugTotpCode,
+  validateTwoFactorCode,
+} from "./lib/api"
 
 import { LoginPage } from "./components/LoginPage"
 import { AdminDashboard } from "./components/AdminDashboard"
@@ -12,8 +17,6 @@ import { useState } from "react"
 import type { SyntheticEvent } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
-
-const API_BASE = "http://localhost:8000"
 
 
 type Page = "login" | "twoFactor" | "admin" | "chess"
@@ -48,38 +51,6 @@ const demoUsers: DemoUser[] = [
   },
 ]
 
-async function validateTotpCode(userId: number, totpCode: string) {
-  const res = await fetch(
-    `${API_BASE}/validate_2fa_key?user_id=${userId}&user_totp=${totpCode}`
-  )
-  if (!res.ok) throw new Error(await res.text())
-  return res.json() as Promise<boolean>
-}
-
-async function createDebugUser(
-  username: string,
-  email: string,
-  password: string
-) {
-  const res = await fetch(`${API_BASE}/DEBUG_CREATE_USER`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, email, password }),
-  })
-  if (!res.ok) throw new Error(await res.text())
-  return res.json() as Promise<{ id: number; username: string }>
-}
-
-async function createSecretKey(userId: number) {
-  const res = await fetch(`${API_BASE}/create_key?user_id=${userId}`, {
-    method: "POST",
-  })
-  if (!res.ok) throw new Error(await res.text())
-  return res.json() as Promise<{ uri: string }>
-}
-
-
-
 
 export function App() {
   const [page, setPage] = useState<Page>("login")
@@ -94,6 +65,8 @@ export function App() {
   const [totp, setTotp] = useState("")
   const [secret, setSecret] = useState<string | null>(null)
   const [totpUri, setTotpUri] = useState<string | null>(null)
+  const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [setupToken, setSetupToken] = useState<string | null>(null)
   const [totpValid, setTotpValid] = useState<boolean | null>(null)
 
   const [newUsername, setNewUsername] = useState("")
@@ -104,16 +77,17 @@ export function App() {
   const validateTotp = useMutation({
     mutationFn: () => {
       if (currentUser === null) throw new Error("No current user")
-      return validateTotpCode(currentUser.id, totp)
+      return validateTwoFactorCode(currentUser.id, totp)
     },
-    onSuccess: (data) => {
-      setTotpValid(data)
+    onSuccess: (token) => {
+      setAccessToken(token)
+      setTotpValid(true)
 
-      if (data && currentUser?.role === "admin") {
+      if (currentUser?.role === "admin") {
         setPage("admin")
       }
 
-      if (data && currentUser?.role === "user") {
+      if (currentUser?.role === "user") {
         setPage("chess")
       }
     },
@@ -123,9 +97,11 @@ export function App() {
     mutationFn: () => {
       if (currentUser === null) throw new Error("No current user")
       return createDebugUser(
-        currentUser.username,
-        currentUser.email,
-        currentUser.password
+        {
+          username: currentUser.username,
+          email: currentUser.email,
+          password: currentUser.password,
+        }
       )
     },
     onSuccess: (data) => {
@@ -142,12 +118,15 @@ export function App() {
   const createSecret = useMutation({
     mutationFn: () => {
       if (currentUser === null) throw new Error("No current user")
-      return createSecretKey(currentUser.id)
+      if (setupToken === null) {
+        throw new Error("Please log in through the backend before creating a 2FA secret.")
+      }
+      return createTwoFactorKey(setupToken)
     },
-    onSuccess: (data) => {
-      setTotpUri(data.uri)
-      const uri = data.uri.replace("otpauth://", "https://")
-      const parsedUrl = new URL(uri)
+    onSuccess: (uri) => {
+      setTotpUri(uri)
+      const parsedUri = uri.replace("otpauth://", "https://")
+      const parsedUrl = new URL(parsedUri)
       const secretParam = parsedUrl.searchParams.get("secret")
       if (secretParam) setSecret(secretParam)
     },
@@ -192,6 +171,8 @@ export function App() {
     setTotpValid(null)
     setSecret(null)
     setTotpUri(null)
+    setAccessToken(null)
+    setSetupToken(null)
     setPage("twoFactor")
   }
 
@@ -200,6 +181,8 @@ export function App() {
     setTotp("")
     setSecret(null)
     setTotpUri(null)
+    setAccessToken(null)
+    setSetupToken(null)
     setTotpValid(null)
     setPage("login")
   }

@@ -1,8 +1,30 @@
 const API_BASE_URL = "http://127.0.0.1:8000"
 
+export type UserRole = "admin" | "user"
+
 type TokenResponse = {
   access_token: string
   token_type: string
+}
+
+export type LoginResponse = {
+  user_id: number
+  username: string
+  two_factor_set: boolean
+  setup_token: string | null
+  token_type: string
+}
+
+export type UserResponse = {
+  id: number
+  username: string
+  role: UserRole
+}
+
+export type CreateUserRequest = {
+  username: string
+  email: string
+  password: string
 }
 
 type CreateKeyResponse = {
@@ -11,6 +33,48 @@ type CreateKeyResponse = {
 
 type DebugTotpResponse = {
   totp_code: number
+}
+
+export async function loginUser(email: string, password: string) {
+  const response = await fetch(`${API_BASE_URL}/users/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response))
+  }
+
+  return (await response.json()) as LoginResponse
+}
+
+export async function createUser(user: CreateUserRequest) {
+  const response = await fetch(`${API_BASE_URL}/users`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(user),
+  })
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response))
+  }
+
+  return (await response.json()) as UserResponse
+}
+
+export async function createDebugUser(user: CreateUserRequest) {
+  const response = await fetch(`${API_BASE_URL}/DEBUG_CREATE_USER`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(user),
+  })
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response))
+  }
+
+  return (await response.json()) as UserResponse
 }
 
 export async function getDebugTotpCode(userId: number) {
