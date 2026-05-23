@@ -102,15 +102,24 @@ export function App() {
       if (currentUser === null) throw new Error("No current user")
       return validateTwoFactorCode(currentUser.id, totp)
     },
-    onSuccess: (token) => {
-      setAccessToken(token)
+    onSuccess: (response) => {
+      setAccessToken(response.token.access_token)
       setTotpValid(true)
+      setCurrentUser((previousUser) => {
+        if (!previousUser) return previousUser
+        return {
+          ...previousUser,
+          id: response.user.id,
+          username: response.user.username,
+          role: response.user.role,
+        }
+      })
 
-      if (currentUser?.role === "admin") {
+      if (response.user.role === "admin") {
         setPage("admin")
       }
 
-      if (currentUser?.role === "user") {
+      if (response.user.role === "user") {
         setPage("chess")
       }
     },

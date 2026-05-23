@@ -19,7 +19,9 @@ from backend.schemas.two_factor_schema import (
     CreateKeyResponse,
     ErrorResponse,
     TokenResponse,
+    ValidateTwoFactorResponse,
 )
+from backend.schemas.user_schema import UserResponse
 from config import get_settings
 
 two_factor_router = APIRouter(tags=["2FA"])
@@ -69,17 +71,24 @@ def _create_totp_uri(user, secret: bytes) -> str:
         401: {"description": "Invalid two factor code"},
         404: {"description": "User or 2fa secret not found"},
     },
-    response_model=Union[TokenResponse, ErrorResponse],
+    response_model=Union[ValidateTwoFactorResponse, ErrorResponse],
 )
 def validate_2fa_key(
     user_id: int, user_totp: int, db: Session = Depends(get_db)
-) -> TokenResponse:
+) -> ValidateTwoFactorResponse:
     user = get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     if user.two_factor_secret:
         if user_totp == _generate_totp(user):
-            return TokenResponse(access_token=create_access_token(user))
+            return ValidateTwoFactorResponse(
+                user=UserResponse(
+                    id=user.id,
+                    username=user.username,
+                    role=user.role,
+                ),
+                token=TokenResponse(access_token=create_access_token(user)),
+            )
         raise HTTPException(status_code=401, detail="Invalid two factor code")
     else:
         raise HTTPException(status_code=404, detail="No two factor secret not found")

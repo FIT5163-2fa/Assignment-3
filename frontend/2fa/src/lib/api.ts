@@ -40,6 +40,11 @@ type DebugTotpResponse = {
   totp_code: number
 }
 
+export type ValidateTwoFactorResponse = {
+  user: UserResponse
+  token: TokenResponse
+}
+
 export async function loginUser(email: string, password: string) {
   const response = await fetch(`${API_BASE_URL}/users/login`, {
     method: "POST",
@@ -224,7 +229,6 @@ export async function createTwoFactorKey(setupToken: string) {
   return data.uri
 }
 
-// This is kept separate because the backend validation endpoint is still being checked.
 export async function validateTwoFactorCode(userId: number, userTotp: string) {
   const response = await fetch(
     `${API_BASE_URL}/validate_2fa_key?user_id=${userId}&user_totp=${userTotp}`,
@@ -234,6 +238,5 @@ export async function validateTwoFactorCode(userId: number, userTotp: string) {
     throw new Error(await getErrorMessage(response))
   }
 
-  const data: TokenResponse = await response.json()
-  return data.access_token
+  return (await response.json()) as ValidateTwoFactorResponse
 }
