@@ -16,8 +16,8 @@ PIECE_VALUES = {
     chess.KING:     0,
 }
 
-# Piece-square tables. These nudge the AI toward sensible positional play 
-# (knights to the centre, king tucked in the corner during the opening/middlegame, pawns rewarded for advancing, etc.). 
+# Piece-square tables. These nudge the AI toward sensible positional play
+# (knights to the centre, king tucked in the corner during the opening/middlegame, pawns rewarded for advancing, etc.).
 # Values are from white's perspective, square index 0 = a1, 63 = h8.
 PAWN_TABLE = [
      0,  0,  0,  0,  0,  0,  0,  0,
@@ -239,10 +239,10 @@ class ChessGame(tk.Toplevel):
 
         # Authoritative game state.
         self.board = chess.Board()
-        self.selected_square = None   
-        self.legal_targets = set()    
-        self.ai_thinking = False       
-        self.human_color = chess.WHITE   
+        self.selected_square = None
+        self.legal_targets = set()
+        self.ai_thinking = False
+        self.human_color = chess.WHITE
 
         self._build_ui()
         self.draw_board()
@@ -656,12 +656,16 @@ def launch_chess(user, ai_depth: int = 3):
     existing_root = tk._default_root
     if existing_root is None:
         root = tk.Tk()
-        root.withdraw()       
+        root.withdraw()
         game = ChessGame(root, user=user, ai_depth=ai_depth)
+        game.attributes('-topmost', True)
+        game.update()
+        game.attributes('-topmost', False)
         root.mainloop()
     else:
         # A root exists; just open the chess window inside the running loop.
         game = ChessGame(existing_root, user=user, ai_depth=ai_depth)
+        game.lift()
     return game
 
 if __name__ == "__main__":

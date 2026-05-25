@@ -1,4 +1,4 @@
-import { type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Navigate } from "react-router"
 import { useAuth } from "@/context/AuthContext"
 
@@ -31,9 +31,22 @@ export function RequireAuth({
 }
 
 export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
-  const { currentUser, accessToken } = useAuth()
+  const { currentUser, accessToken, isChessLogin, completeChessLogin } = useAuth()
+  const [chessCallbackPending, setChessCallbackPending] = useState(isChessLogin)
+
+  useEffect(() => {
+    if (!currentUser || !accessToken || !isChessLogin) return
+
+    let cancelled = false
+    completeChessLogin().finally(() => {
+      if (!cancelled) setChessCallbackPending(false)
+    })
+    return () => { cancelled = true }
+  }, [currentUser, accessToken, isChessLogin, completeChessLogin])
 
   if (currentUser && accessToken) {
+    if (isChessLogin && chessCallbackPending) return null
+
     const destination = currentUser.role === "admin" ? "/admin" : "/chess"
     return <Navigate to={destination} replace />
   }
