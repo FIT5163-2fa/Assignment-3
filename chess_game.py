@@ -635,6 +635,9 @@ def launch_chess(user):
         root = tk.Tk()
         root.withdraw()
         game = ChessGame(root, user=user)
+        game.attributes('-topmost', True)
+        game.update()
+        game.attributes('-topmost', False)
         root.mainloop()
     else:
         # A root exists; just open the chess window inside the running loop.
