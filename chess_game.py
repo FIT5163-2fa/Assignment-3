@@ -16,8 +16,8 @@ PIECE_VALUES = {
     chess.KING:     0,
 }
 
-# Piece-square tables. These nudge the AI toward sensible positional play 
-# (knights to the centre, king tucked in the corner during the opening/middlegame, pawns rewarded for advancing, etc.). 
+# Piece-square tables. These nudge the AI toward sensible positional play
+# (knights to the centre, king tucked in the corner during the opening/middlegame, pawns rewarded for advancing, etc.).
 # Values are from white's perspective, square index 0 = a1, 63 = h8.
 PAWN_TABLE = [
      0,  0,  0,  0,  0,  0,  0,  0,
@@ -240,10 +240,10 @@ class ChessGame(tk.Toplevel):
 
         # Authoritative game state.
         self.board = chess.Board()
-        self.selected_square = None   
-        self.legal_targets = set()    
-        self.ai_thinking = False       
-        self.human_color = chess.WHITE   
+        self.selected_square = None
+        self.legal_targets = set()
+        self.ai_thinking = False
+        self.human_color = chess.WHITE
 
         self._build_ui()
         self.draw_board()
@@ -641,7 +641,7 @@ def launch_chess(user):
         game = ChessGame(existing_root, user=user)
     return game
 
-if __name__ == "__main__":
+def attempt_login():
     from login_callback import (
         wait_for_login_callback,
         verify_login_with_backend,
@@ -661,4 +661,9 @@ if __name__ == "__main__":
     if not token_ok:
         raise SystemExit("Login token rejected by the backend - access denied.")
 
+    return result
+
+
+if __name__ == "__main__":
+    result = attempt_login()
     launch_chess({"username": result.username})
