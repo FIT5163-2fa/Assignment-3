@@ -2,7 +2,6 @@ import {
   createContext,
   useContext,
   useState,
-  useRef,
   useEffect,
   type ReactNode,
 } from "react"
@@ -35,6 +34,8 @@ type AuthContextType = {
   isChessLogin: boolean
   login: (email: string, password: string) => Promise<void>
   completeTwoFactor: (totp: string) => Promise<void>
+  completeChessLogin: () => Promise<void>
+  chessCallbackError: string | null
   setTwoFactorSecret: (secret: string | null) => void
   logout: () => void
   setCurrentUser: React.Dispatch<React.SetStateAction<CurrentUser | null>>
@@ -127,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
   const isChessLogin = chessLoginState !== null && chessCallbackUrl !== null
 
-  const chessCallbackErrorRef = useRef<string | null>(null)
+  const [chessCallbackError, setChessCallbackError] = useState<string | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -237,11 +238,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           response.token.access_token,
         )
       } catch (error) {
-        chessCallbackErrorRef.current = getErrorMessage(error)
+        setChessCallbackError(getErrorMessage(error))
       }
     }
 
     navigate("/chess")
+  }
+
+  async function completeChessLogin() {
+    if (!currentUser || !accessToken) return
+    if (!isChessLogin) return
+
+    try {
+      await completeChessLoginCallback(
+        chessCallbackUrl!,
+        chessLoginState!,
+        { id: currentUser.id, username: currentUser.username, role: currentUser.role },
+        accessToken,
+      )
+    } catch (error) {
+      setChessCallbackError(getErrorMessage(error))
+    }
   }
 
   function logout() {
@@ -252,7 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSetupToken(null)
     setValidateToken(null)
     setTwoFactorSecret(null)
-    chessCallbackErrorRef.current = null
+    setChessCallbackError(null)
     navigate("/login")
   }
 
@@ -269,6 +286,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isChessLogin,
         login,
         completeTwoFactor,
+        completeChessLogin,
+        chessCallbackError,
         setTwoFactorSecret,
         logout,
         setCurrentUser: persistCurrentUser,
