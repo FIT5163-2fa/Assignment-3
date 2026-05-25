@@ -1,7 +1,6 @@
 import uvicorn
 from init import app
-from login_callback import wait_for_login_callback, LoginCallbackError
-from chess_game import launch_chess
+from chess_game import launch_chess, attempt_login
 import threading
 
 def start_server():
@@ -12,9 +11,5 @@ if __name__ == "__main__":
     t.daemon = True
     t.start()
 
-    try:
-        result = wait_for_login_callback()
-    except LoginCallbackError as exc:
-        raise SystemExit(f"2FA login failed or timed out: {exc}")
-
-    launch_chess({"username": result.username}, ai_depth=3)
+    result = attempt_login()
+    launch_chess({"username": result.username})

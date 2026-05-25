@@ -90,6 +90,8 @@ PIECE_SQUARE_TABLES = {
 
 MATE_SCORE = 1_000_000
 
+AI_DEPTH = 3
+
 
 def evaluate(board: chess.Board) -> int:
     """
@@ -227,10 +229,9 @@ class ChessGame(tk.Toplevel):
     you want; see new_game.)
     """
 
-    def __init__(self, master, user=None, ai_depth: int = 3):
+    def __init__(self, master, user=None):
         super().__init__(master)
         self.user = user or {"username": "guest"}
-        self.ai_depth = ai_depth
 
         username = self.user.get("username", "guest")
         self.title(f"FIT5163 Chess Game - logged in as {username}")
@@ -305,10 +306,10 @@ class ChessGame(tk.Toplevel):
         sb.pack(side="left", fill="y")
         self.moves_list.config(yscrollcommand=sb.set)
 
-        # Footer: who's playing whom + AI depth.
+        # Footer: who's playing whom.
         footer = tk.Label(
             self,
-            text=f"You: White  -  AI (depth {self.ai_depth}): Black",
+            text=f"You: White  -  AI (depth {AI_DEPTH}): Black",
             fg=FG_DIM, bg=BG, font=("Helvetica", 9, "italic"),
         )
         footer.pack(pady=(4, 8))
@@ -471,8 +472,6 @@ class ChessGame(tk.Toplevel):
         self.draw_board()
 
     def _try_move(self, from_sq, to_sq):
-        """Push a move, asking for a promotion piece if applicable, then
-        kick off the AI reply."""
         promotion = None
         piece = self.board.piece_at(from_sq)
         to_rank = chess.square_rank(to_sq)
@@ -492,7 +491,6 @@ class ChessGame(tk.Toplevel):
                 self.after(120, self._trigger_ai_move)
 
     def _ask_promotion(self):
-        """Modal dialog that returns one of the four promotion piece types."""
         dlg = tk.Toplevel(self)
         dlg.title("Promote pawn")
         dlg.configure(bg=BG)
@@ -542,7 +540,7 @@ class ChessGame(tk.Toplevel):
         # Snapshot the board to avoid races; the search mutates push/pop
         # on its own copy.
         board_copy = self.board.copy(stack=False)
-        depth = self.ai_depth
+        depth = AI_DEPTH
         result_holder = {"move": None, "done": False}
 
         def worker():
@@ -593,10 +591,6 @@ class ChessGame(tk.Toplevel):
         self.draw_board()
 
     def undo_move(self):
-        """
-        Undo two plies (the AI's reply + the human's move) so the human
-        is back on the move. Useful for try-again play.
-        """
         if self.ai_thinking:
             return
         # Pop AI move, then human move, if available.
@@ -631,49 +625,48 @@ class ChessGame(tk.Toplevel):
 
 
 # Public API for teammate's 2FA module
-def launch_chess(user, ai_depth: int = 3):
+def launch_chess(user):
     """
     Open the chess game for an authenticated user.
-
-    Parameters
-    ----------
-    user : dict-like
-        At minimum should have a 'username' key. The chess module does
-        not care about authentication itself - it trusts that the caller
-        has already authenticated the user.
-    ai_depth : int
-        Search depth for the AI. 2 = fast, 3 = default, 4 = stronger
-        but slower (a few seconds per move on a typical laptop).
-
-    Notes
-    -----
-    - If a Tk root already exists (because the 2FA login created one),
-      we attach to it as a Toplevel and run the existing mainloop.
-    - If no Tk root exists, we create a hidden one and start mainloop()
-      so the function works standalone too.
     """
     # Detect whether there's already a running Tk root in this process.
     existing_root = tk._default_root
     if existing_root is None:
         root = tk.Tk()
         root.withdraw()
-        game = ChessGame(root, user=user, ai_depth=ai_depth)
+        game = ChessGame(root, user=user)
         game.attributes('-topmost', True)
         game.update()
         game.attributes('-topmost', False)
         root.mainloop()
     else:
         # A root exists; just open the chess window inside the running loop.
-        game = ChessGame(existing_root, user=user, ai_depth=ai_depth)
-        game.lift()
+        game = ChessGame(existing_root, user=user)
     return game
 
-if __name__ == "__main__":
-    from login_callback import wait_for_login_callback, LoginCallbackError
+def attempt_login():
+    from login_callback import (
+        wait_for_login_callback,
+        verify_login_with_backend,
+        LoginCallbackError,
+    )
 
     try:
         result = wait_for_login_callback()
     except LoginCallbackError as exc:
         raise SystemExit(f"2FA login failed or timed out: {exc}")
 
-    launch_chess({"username": result.username}, ai_depth=3)
+    try:
+        token_ok = verify_login_with_backend(result)
+    except LoginCallbackError as exc:
+        raise SystemExit(f"Could not verify login: {exc}")
+
+    if not token_ok:
+        raise SystemExit("Login token rejected by the backend - access denied.")
+
+    return result
+
+
+if __name__ == "__main__":
+    result = attempt_login()
+    launch_chess({"username": result.username})
