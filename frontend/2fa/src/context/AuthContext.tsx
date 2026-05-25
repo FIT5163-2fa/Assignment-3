@@ -54,25 +54,53 @@ export function useAuth() {
 
 // DEV: Persist the 2FA secret to localStorage for convenience during development.
 const TWO_FACTOR_SECRET_KEY = "2fa_secret"
+const ACCESS_TOKEN_KEY = "access_token"
+const CURRENT_USER_KEY = "current_user"
 
-function loadSecretFromStorage(): string | null {
+function loadFromStorage<T>(key: string, parse?: boolean): T | null {
   try {
-    return localStorage.getItem(TWO_FACTOR_SECRET_KEY)
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    return parse ? (JSON.parse(raw) as T) : (raw as T)
   } catch {
     return null
   }
 }
 
-function saveSecretToStorage(secret: string | null) {
+function saveToStorage(key: string, value: string | null) {
   try {
-    if (secret) {
-      localStorage.setItem(TWO_FACTOR_SECRET_KEY, secret)
+    if (value) {
+      localStorage.setItem(key, value)
     } else {
-      localStorage.removeItem(TWO_FACTOR_SECRET_KEY)
+      localStorage.removeItem(key)
     }
   } catch {
-    console.log("Failed to access localStorage for 2FA secret persistence.")
+    console.log(`Failed to access localStorage for key: ${key}`)
   }
+}
+
+function loadSecretFromStorage(): string | null {
+  return loadFromStorage<string>(TWO_FACTOR_SECRET_KEY)
+}
+
+function saveSecretToStorage(secret: string | null) {
+  saveToStorage(TWO_FACTOR_SECRET_KEY, secret)
+}
+
+function loadCurrentUserFromStorage(): CurrentUser | null {
+  return loadFromStorage<CurrentUser>(CURRENT_USER_KEY, true)
+}
+
+function saveCurrentUserToStorage(user: CurrentUser | null) {
+  saveToStorage(CURRENT_USER_KEY, user ? JSON.stringify(user) : null)
+}
+
+function loadAccessTokenFromStorage(): string | null {
+  return loadFromStorage<string>(ACCESS_TOKEN_KEY)
+}
+
+function saveAccessTokenToStorage(token: string | null) {
+  saveToStorage(ACCESS_TOKEN_KEY, token)
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -108,6 +136,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveSecretToStorage(secret)
   }
 
+  function persistCurrentUser(
+    action: React.SetStateAction<CurrentUser | null>
+  ) {
+    setCurrentUser((prev) => {
+      const next = typeof action === "function" ? action(prev) : action
+      saveCurrentUserToStorage(next)
+      return next
+    })
+  }
+
+  function persistAccessToken(
+    action: React.SetStateAction<string | null>
+  ) {
+    setAccessToken((prev) => {
+      const next = typeof action === "function" ? action(prev) : action
+      saveAccessTokenToStorage(next)
+      return next
+    })
+  }
+
   async function login(email: string, password: string) {
     const loginResponse = await loginUserApi(email, password)
 
@@ -117,9 +165,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       twoFactorSet: loginResponse.two_factor_set,
     })
+    saveCurrentUserToStorage({
+      id: loginResponse.user_id,
+      username: loginResponse.username,
+      email,
+      twoFactorSet: loginResponse.two_factor_set,
+    })
     setSetupToken(loginResponse.setup_token)
     setValidateToken(loginResponse.validate_token)
     setAccessToken(null)
+    saveAccessTokenToStorage(null)
 
     if (!loginResponse.two_factor_set) {
       navigate("/2fa/setup")
@@ -141,6 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setSetupToken(null)
     setAccessToken(response.token.access_token)
+    saveAccessTokenToStorage(response.token.access_token)
     setCurrentUser((prev) => {
       if (!prev) return prev
       return {
@@ -150,6 +206,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: response.user.role,
         twoFactorSet: true,
       }
+    })
+    saveCurrentUserToStorage({
+      ...currentUser,
+      id: response.user.id,
+      username: response.user.username,
+      role: response.user.role,
+      twoFactorSet: true,
     })
 
     if (response.user.role === "admin") {
@@ -176,6 +239,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function logout() {
     setCurrentUser(null)
     setAccessToken(null)
+    saveCurrentUserToStorage(null)
+    saveAccessTokenToStorage(null)
     setSetupToken(null)
     setValidateToken(null)
     setTwoFactorSecret(null)
@@ -198,8 +263,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         completeTwoFactor,
         setTwoFactorSecret,
         logout,
-        setCurrentUser,
-        setAccessToken,
+        setCurrentUser: persistCurrentUser,
+        setAccessToken: persistAccessToken,
         setSetupToken,
         setValidateToken,
       }}
