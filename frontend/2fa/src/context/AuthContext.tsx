@@ -87,8 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadSecretFromStorage
   )
 
-  const chessLoginState = searchParams.get("state")
-  const chessCallbackUrl = searchParams.get("callback_url")
+  const [chessLoginState] = useState<string | null>(() =>
+    searchParams.get("state")
+  )
+  const [chessCallbackUrl] = useState<string | null>(() =>
+    searchParams.get("callback_url")
+  )
   const isChessLogin = chessLoginState !== null && chessCallbackUrl !== null
 
   const chessCallbackErrorRef = useRef<string | null>(null)
