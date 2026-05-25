@@ -107,8 +107,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
-  const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(
+    loadCurrentUserFromStorage
+  )
+  const [accessToken, setAccessToken] = useState<string | null>(
+    loadAccessTokenFromStorage
+  )
   const [setupToken, setSetupToken] = useState<string | null>(null)
   const [validateToken, setValidateToken] = useState<string | null>(null)
   const [twoFactorSecret, setTwoFactorSecretState] = useState<string | null>(

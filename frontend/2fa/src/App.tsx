@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router"
-import { RequireAuth } from "@/components/RequireAuth"
+import { RequireAuth, RedirectIfAuthenticated } from "@/components/RequireAuth"
 import { AuthProvider } from "@/context/AuthContext"
 import { LoginPage } from "@/pages/LoginPage"
 import { RegisterPage } from "@/pages/RegisterPage"
@@ -13,22 +13,40 @@ export function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route
+            path="/login"
+            element={
+              <RedirectIfAuthenticated>
+                <LoginPage />
+              </RedirectIfAuthenticated>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <RedirectIfAuthenticated>
+                <RegisterPage />
+              </RedirectIfAuthenticated>
+            }
+          />
           <Route
             path="/2fa/setup"
             element={
-              <RequireAuth>
-                <TwoFactorSetupPage />
-              </RequireAuth>
+              <RedirectIfAuthenticated>
+                <RequireAuth>
+                  <TwoFactorSetupPage />
+                </RequireAuth>
+              </RedirectIfAuthenticated>
             }
           />
           <Route
             path="/2fa"
             element={
-              <RequireAuth>
-                <TwoFactorPage />
-              </RequireAuth>
+              <RedirectIfAuthenticated>
+                <RequireAuth>
+                  <TwoFactorPage />
+                </RequireAuth>
+              </RedirectIfAuthenticated>
             }
           />
           <Route

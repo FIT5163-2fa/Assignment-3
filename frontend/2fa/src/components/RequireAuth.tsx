@@ -29,3 +29,14 @@ export function RequireAuth({
 
   return children
 }
+
+export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
+  const { currentUser, accessToken } = useAuth()
+
+  if (currentUser && accessToken) {
+    const destination = currentUser.role === "admin" ? "/admin" : "/chess"
+    return <Navigate to={destination} replace />
+  }
+
+  return children
+}
